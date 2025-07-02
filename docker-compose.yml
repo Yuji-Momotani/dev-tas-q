@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${NODE_ENV:-development}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "echo 'NODE_ENV = $NODE_ENV' && npm run dev -- --host 0.0.0.0 --port 3000"
+    
