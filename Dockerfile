@@ -26,7 +26,7 @@ FROM base AS build
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM build AS production
 WORKDIR /app
 
 # Install serve package globally
