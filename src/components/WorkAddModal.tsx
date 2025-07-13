@@ -213,7 +213,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
                 value={`¥${formData.totalCost.toLocaleString()}`}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-              />
+              <p className="mt-1 text-xs text-gray-500">※ 数量 × 単価で自動計算</p>
               <p className="mt-1 text-xs text-gray-500">※ 数量 × 単価で自動計算</p>
             </div>
           </div>
