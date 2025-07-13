@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
+import WorkAddModal from '../../components/WorkAddModal';
 import { mockWorkItems, workerMasterData } from '../../data/mockData';
-import { WorkItem } from '../../types';
+import { WorkItem } from '../../types/admin';
 import { Download } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 
@@ -22,6 +23,9 @@ const WorkListPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedWorker, setSelectedWorker] = useState('');
+
+  // モーダル状態
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // 検索フィルターを適用する関数
   const applyFilters = () => {
@@ -94,8 +98,29 @@ const WorkListPage: React.FC = () => {
     navigate('/admin/login');
   };
 
-  const handleAddWork = () => {
-    navigate('/admin/worker-list');
+  const handleOpenAddModal = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  const handleSaveWork = (newWorkData: Omit<WorkItem, 'id'>) => {
+    // 新しいIDを生成（実際のアプリケーションではサーバーサイドで生成）
+    const newId = `#${Math.floor(Math.random() * 900000) + 100000}`;
+    
+    const newWorkItem: WorkItem = {
+      id: newId,
+      ...newWorkData
+    };
+
+    // モックデータに追加
+    const updatedItems = [...workItems, newWorkItem];
+    setWorkItems(updatedItems);
+    setFilteredItems(updatedItems);
+    
+    alert('作業が追加されました。');
   };
 
   const handleExportCSV = () => {
@@ -114,7 +139,7 @@ const WorkListPage: React.FC = () => {
         </div>
         <div className="flex space-x-2">
           <button className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-            onClick={handleAddWork}
+            onClick={() => navigate('/admin/worker-list')}
             className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
           >
             作業者一覧
@@ -149,7 +174,7 @@ const WorkListPage: React.FC = () => {
           {/* Filter controls */}
           <div className="flex flex-wrap gap-4 items-center mb-4">
             <button
-              onClick={handleAddWork}
+              onClick={handleOpenAddModal}
               className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
               作業追加
@@ -286,6 +311,13 @@ const WorkListPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 作業追加モーダル */}
+      <WorkAddModal
+        isOpen={isAddModalOpen}
+        onClose={handleCloseAddModal}
+        onSave={handleSaveWork}
+      />
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
