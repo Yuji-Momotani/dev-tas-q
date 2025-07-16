@@ -46,6 +46,9 @@ const QRScannerPage: React.FC = () => {
 
       qrScannerRef.current = qrScanner;
       
+      // 小さな遅延を追加してブラウザのメディア要素の初期化を待つ
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // スキャナーを開始
       await qrScanner.start();
       setIsScanning(true);
