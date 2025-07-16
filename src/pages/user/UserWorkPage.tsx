@@ -48,7 +48,7 @@ const UserWorkPage: React.FC = () => {
   // QRスキャナーから戻ってきた時の処理
   useEffect(() => {
     refreshWorkData();
-  };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
