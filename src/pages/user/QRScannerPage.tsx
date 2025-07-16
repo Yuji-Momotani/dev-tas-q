@@ -60,7 +60,8 @@ const QRScannerPage: React.FC = () => {
     // 実際の実装では、QRコード読み取りライブラリ（例：qr-scanner）を使用
     setTimeout(() => {
       const mockQRData = "WORK_ID_12345";
-      alert(`QRコードを読み取りました: ${mockQRData}`);
+      // QRコード読み取り結果をsessionStorageに保存
+      sessionStorage.setItem('qrResult', mockQRData);
       handleBack();
     }, 2000);
   };
