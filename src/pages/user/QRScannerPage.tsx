@@ -20,6 +20,13 @@ const QRScannerPage: React.FC = () => {
 
   const startQRScanner = async () => {
     try {
+      // 既存のQrScannerインスタンスがある場合は停止・破棄
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop();
+        qrScannerRef.current.destroy();
+        qrScannerRef.current = null;
+      }
+
       if (!videoRef.current) return;
 
       // QrScannerインスタンスを作成
