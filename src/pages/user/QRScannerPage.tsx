@@ -7,6 +7,7 @@ const QRScannerPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>('');
+  const [isWaitingForQR, setIsWaitingForQR] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -28,6 +29,7 @@ const QRScannerPage: React.FC = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsScanning(true);
+        setIsWaitingForQR(true);
         setError('');
       }
     } catch (err) {
@@ -55,15 +57,23 @@ const QRScannerPage: React.FC = () => {
     navigate('/user/work');
   };
 
-  // QRコード検出のシミュレーション（実際の実装では専用ライブラリを使用）
-  const simulateQRDetection = () => {
-    // 実際の実装では、QRコード読み取りライブラリ（例：qr-scanner）を使用
+  // QRコード読み取り成功時の処理（テスト用）
+  const handleQRDetected = (qrData: string) => {
+    setIsWaitingForQR(false);
+    // QRコード読み取り結果をsessionStorageに保存
+    sessionStorage.setItem('qrResult', qrData);
+    // 少し遅延を入れてフィードバックを表示
     setTimeout(() => {
-      const mockQRData = "WORK_ID_12345";
-      // QRコード読み取り結果をsessionStorageに保存
-      sessionStorage.setItem('qrResult', mockQRData);
       handleBack();
-    }, 2000);
+    }, 500);
+  };
+
+  // テスト用：画面タップでQRコード読み取りをシミュレート
+  const handleScreenTap = () => {
+    if (isWaitingForQR) {
+      const mockQRData = "WORK_ID_12345";
+      handleQRDetected(mockQRData);
+    }
   };
 
   return (
@@ -109,11 +119,14 @@ const QRScannerPage: React.FC = () => {
               playsInline
               muted
               className="w-full h-full object-cover"
-              onLoadedMetadata={simulateQRDetection}
+              onClick={handleScreenTap}
             />
 
             {/* QR Code Scanning Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div 
+              className="absolute inset-0 flex items-center justify-center cursor-pointer"
+              onClick={handleScreenTap}
+            >
               {/* Scanning Frame */}
               <div className="relative">
                 {/* QR Code Frame */}
@@ -132,24 +145,31 @@ const QRScannerPage: React.FC = () => {
                   {/* Scanning Animation */}
                   {isScanning && (
                     <div className="absolute inset-0 overflow-hidden">
-                      <div className="w-full h-1 bg-green-400 opacity-80 animate-pulse"></div>
+                      <div className={`w-full h-1 opacity-80 animate-pulse ${isWaitingForQR ? 'bg-green-400' : 'bg-blue-400'}`}></div>
                     </div>
                   )}
                 </div>
 
                 {/* Instructions */}
                 <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 text-center">
-                  <p className="text-white text-sm">
-                    QRコードをフレーム内に合わせてください
+                  <p className="text-white text-sm mb-2">
+                    {isWaitingForQR ? 'QRコードをフレーム内に合わせてください' : 'QRコード読み取り完了'}
                   </p>
+                  {isWaitingForQR && (
+                    <p className="text-white text-xs opacity-75">
+                      （テスト用：画面をタップしてQR読み取りをシミュレート）
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Dark Overlay with Cutout */}
-            <div className="absolute inset-0 bg-black bg-opacity-50">
+            <div className="absolute inset-0 bg-black bg-opacity-50 pointer-events-none">
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-64 h-64 bg-transparent border-2 border-dashed border-white border-opacity-30 rounded-lg"></div>
+                <div className={`w-64 h-64 bg-transparent border-2 border-dashed rounded-lg transition-colors ${
+                  isWaitingForQR ? 'border-white border-opacity-30' : 'border-green-400 border-opacity-80'
+                }`}></div>
               </div>
             </div>
           </>
@@ -168,10 +188,19 @@ const QRScannerPage: React.FC = () => {
           <button
             onClick={startCamera}
             className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2"
+            disabled={!isWaitingForQR}
           >
             <Camera className="w-5 h-5" />
             <span>再スキャン</span>
           </button>
+          {isWaitingForQR && (
+            <button
+              onClick={handleScreenTap}
+              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              テスト読み取り
+            </button>
+          )}
         </div>
       </div>
 
