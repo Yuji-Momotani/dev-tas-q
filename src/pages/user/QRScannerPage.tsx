@@ -1,79 +1,93 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut, Camera } from 'lucide-react';
+import QrScanner from 'qr-scanner';
 
 const QRScannerPage: React.FC = () => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const qrScannerRef = useRef<QrScanner | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>('');
   const [isWaitingForQR, setIsWaitingForQR] = useState(false);
 
   useEffect(() => {
-    startCamera();
+    startQRScanner();
     return () => {
-      stopCamera();
+      stopQRScanner();
     };
   }, []);
 
-  const startCamera = async () => {
+  const startQRScanner = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // 背面カメラを優先
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      if (!videoRef.current) return;
+
+      // QrScannerインスタンスを作成
+      const qrScanner = new QrScanner(
+        videoRef.current,
+        (result) => handleQRDetected(result.data),
+        {
+          onDecodeError: (err) => {
+            // QRコードが見つからない場合のエラーは無視
+            // console.log('QR decode error:', err);
+          },
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          preferredCamera: 'environment', // 背面カメラを優先
         }
-      });
+      );
+
+      qrScannerRef.current = qrScanner;
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsScanning(true);
-        setIsWaitingForQR(true);
-        setError('');
-      }
+      // スキャナーを開始
+      await qrScanner.start();
+      setIsScanning(true);
+      setIsWaitingForQR(true);
+      setError('');
+      
     } catch (err) {
-      console.error('カメラアクセスエラー:', err);
+      console.error('QRスキャナー開始エラー:', err);
       setError('カメラにアクセスできません。ブラウザの設定を確認してください。');
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+  const stopQRScanner = () => {
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop();
+      qrScannerRef.current.destroy();
+      qrScannerRef.current = null;
     }
     setIsScanning(false);
+    setIsWaitingForQR(false);
   };
 
   const handleLogout = () => {
-    stopCamera();
+    stopQRScanner();
     navigate('/user/login');
   };
 
   const handleBack = () => {
-    stopCamera();
+    stopQRScanner();
     navigate('/user/work');
   };
 
-  // QRコード読み取り成功時の処理（テスト用）
+  // QRコード読み取り成功時の処理
   const handleQRDetected = (qrData: string) => {
+    console.log('QRコード読み取り成功:', qrData);
     setIsWaitingForQR(false);
+    
     // QRコード読み取り結果をsessionStorageに保存
     sessionStorage.setItem('qrResult', qrData);
+    
     // 少し遅延を入れてフィードバックを表示
     setTimeout(() => {
       handleBack();
     }, 500);
   };
 
-  // テスト用：画面タップでQRコード読み取りをシミュレート
-  const handleScreenTap = () => {
-    if (isWaitingForQR) {
-      const mockQRData = "WORK_ID_12345";
-      handleQRDetected(mockQRData);
-    }
+  const handleRetry = () => {
+    setError('');
+    startQRScanner();
   };
 
   return (
@@ -104,7 +118,7 @@ const QRScannerPage: React.FC = () => {
             <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-white text-lg mb-4">{error}</p>
             <button
-              onClick={startCamera}
+              onClick={handleRetry}
               className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
             >
               再試行
@@ -119,14 +133,10 @@ const QRScannerPage: React.FC = () => {
               playsInline
               muted
               className="w-full h-full object-cover"
-              onClick={handleScreenTap}
             />
 
             {/* QR Code Scanning Overlay */}
-            <div 
-              className="absolute inset-0 flex items-center justify-center cursor-pointer"
-              onClick={handleScreenTap}
-            >
+            <div className="absolute inset-0 flex items-center justify-center">
               {/* Scanning Frame */}
               <div className="relative">
                 {/* QR Code Frame */}
@@ -143,9 +153,9 @@ const QRScannerPage: React.FC = () => {
                   </div>
 
                   {/* Scanning Animation */}
-                  {isScanning && (
+                  {isScanning && isWaitingForQR && (
                     <div className="absolute inset-0 overflow-hidden">
-                      <div className={`w-full h-1 opacity-80 animate-pulse ${isWaitingForQR ? 'bg-green-400' : 'bg-blue-400'}`}></div>
+                      <div className="w-full h-1 bg-green-400 opacity-80 animate-pulse"></div>
                     </div>
                   )}
                 </div>
@@ -155,11 +165,6 @@ const QRScannerPage: React.FC = () => {
                   <p className="text-white text-sm mb-2">
                     {isWaitingForQR ? 'QRコードをフレーム内に合わせてください' : 'QRコード読み取り完了'}
                   </p>
-                  {isWaitingForQR && (
-                    <p className="text-white text-xs opacity-75">
-                      （テスト用：画面をタップしてQR読み取りをシミュレート）
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -186,21 +191,13 @@ const QRScannerPage: React.FC = () => {
             戻る
           </button>
           <button
-            onClick={startCamera}
+            onClick={handleRetry}
             className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2"
-            disabled={!isWaitingForQR}
+            disabled={!error}
           >
             <Camera className="w-5 h-5" />
             <span>再スキャン</span>
           </button>
-          {isWaitingForQR && (
-            <button
-              onClick={handleScreenTap}
-              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              テスト読み取り
-            </button>
-          )}
         </div>
       </div>
 
