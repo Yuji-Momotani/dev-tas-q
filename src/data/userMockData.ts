@@ -41,3 +41,8 @@ export const setUserWorkFromQR = (userId: string, qrData: string): void => {
     startedAt: new Date()
   }];
 };
+
+// ユーザーの作業データを初期化する関数
+export const clearUserWorkData = (userId: string): void => {
+  mockUserWorkItems[userId] = [];
+};

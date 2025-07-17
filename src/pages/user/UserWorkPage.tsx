@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, QrCode, LogOut } from 'lucide-react';
-import { getUserWorkItems, hasActiveWork, setUserWorkFromQR } from '../../data/userMockData';
+import { getUserWorkItems, hasActiveWork, setUserWorkFromQR, clearUserWorkData } from '../../data/userMockData';
 import { UserWorkItem } from '../../types/user';
 
 const UserWorkPage: React.FC = () => {
@@ -9,17 +9,33 @@ const UserWorkPage: React.FC = () => {
   const [currentUser] = useState('test@example.com'); // 実際の実装では認証状態から取得
   const [workItems, setWorkItems] = useState<UserWorkItem[]>([]);
   const [hasWork, setHasWork] = useState(false);
+  const [qrData, setQrData] = useState<any>(null);
 
   // QRコード読み取り結果を受け取る処理
   useEffect(() => {
     const qrResult = sessionStorage.getItem('qrResult');
     if (qrResult) {
-      setUserWorkFromQR(currentUser, qrResult);
-      sessionStorage.removeItem('qrResult');
+      try {
+        const parsedResult = JSON.parse(qrResult);
+        setQrData(parsedResult);
+        setUserWorkFromQR(currentUser, qrResult);
+        sessionStorage.removeItem('qrResult');
+      } catch (error) {
+        console.error('QRコード結果の解析エラー:', error);
+        // 旧形式のデータの場合
+        setUserWorkFromQR(currentUser, qrResult);
+        sessionStorage.removeItem('qrResult');
+      }
     }
   }, [currentUser]);
 
   useEffect(() => {
+    // QRコード読み取り結果がない場合、作業データを初期化
+    const qrResult = sessionStorage.getItem('qrResult');
+    if (!qrResult) {
+      clearUserWorkData(currentUser);
+    }
+    
     // ユーザーの作業データを取得
     const userWork = getUserWorkItems(currentUser);
     setWorkItems(userWork);
@@ -111,8 +127,23 @@ const UserWorkPage: React.FC = () => {
 
         {/* Main Content */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {hasWork ? (
-            // 作業がある場合の表示
+          {qrData ? (
+            // QRコード読み取り後の表示
+            <div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">
+                {qrData.company}
+              </h2>
+              <div className="flex items-center space-x-4 mb-6">
+                <h3 className="text-2xl font-semibold text-gray-700">
+                  {qrData.task}
+                </h3>
+                <span className="inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white bg-red-500">
+                  作業着手中
+                </span>
+              </div>
+            </div>
+          ) : hasWork ? (
+            // 既存の作業がある場合の表示
             <div>
               {workItems.map((work) => (
                 <div key={work.id} className="mb-8">
@@ -131,7 +162,7 @@ const UserWorkPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            // 作業がない場合の表示
+            // 作業がない場合の表示（作業待機中）
             <div>
               <h2 className="text-3xl font-bold text-gray-800 mb-8">
                 作業待機中
@@ -142,16 +173,18 @@ const UserWorkPage: React.FC = () => {
             </div>
           )}
 
-          {/* QR Code Button */}
-          <div className="mt-12">
-            <button
-              onClick={handleQRCodeScan}
-              className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4"
-            >
-              <QrCode className="w-8 h-8" />
-              <span>QRコード読み取り</span>
-            </button>
-          </div>
+          {/* QR Code Button - QRコード読み取り後は非表示 */}
+          {!qrData && (
+            <div className="mt-12">
+              <button
+                onClick={handleQRCodeScan}
+                className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4"
+              >
+                <QrCode className="w-8 h-8" />
+                <span>QRコード読み取り</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
