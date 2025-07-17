@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Camera } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import jsQR from 'jsqr';
 
 const QRScannerPage: React.FC = () => {
@@ -14,6 +14,8 @@ const QRScannerPage: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>('');
   const [isWaitingForQR, setIsWaitingForQR] = useState(false);
+  const [detectedQR, setDetectedQR] = useState<string | null>(null);
+  const [showLinkButton, setShowLinkButton] = useState(false);
 
   useEffect(() => {
     const initializeScanner = async () => {
@@ -141,6 +143,12 @@ const QRScannerPage: React.FC = () => {
           handleQRDetected(qrResult);
           return;
         }
+        
+        // QRコードが検出されなかった場合、リンクボタンを非表示
+        if (showLinkButton) {
+          setShowLinkButton(false);
+          setDetectedQR(null);
+        }
       } catch (err) {
         console.warn('QR検出エラー:', err);
       }
@@ -202,37 +210,35 @@ const QRScannerPage: React.FC = () => {
   // QRコード読み取り成功時の処理
   const handleQRDetected = (qrData: string) => {
     console.log('QRコード読み取り成功:', qrData);
-    setIsWaitingForQR(false);
     
+    // 検出されたQRコードを保存し、リンクボタンを表示
+    setDetectedQR(qrData);
+    setShowLinkButton(true);
+    setIsWaitingForQR(false);
+  };
+
+  // リンクボタンクリック時の処理
+  const handleLinkClick = () => {
+    if (!detectedQR) return;
+
     // モックデータを設定
     const mockData = {
       company: '株式会社 音光堂',
       task: 'Aハンダ作業開始',
-      qrCode: qrData,
+      qrCode: detectedQR,
       timestamp: new Date().toISOString()
     };
     
     // QRコード読み取り結果をsessionStorageに保存
     sessionStorage.setItem('qrResult', JSON.stringify(mockData));
     
-    // 少し遅延を入れてフィードバックを表示
-    setTimeout(() => {
-      handleBack();
-    }, 500);
+    // 作業画面に遷移
+    handleBack();
   };
 
-  const handleRetry = () => {
-    setError('');
-    startQRScanner();
-  };
-
-  // テスト用：QRコード検出をシミュレート
-  const handleTestQRDetection = () => {
-    handleQRDetected('TEST_QR_CODE_' + Date.now());
-  };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="h-screen bg-black overflow-hidden">
       {/* Header */}
       <header className="bg-green-600 text-white py-4 px-6 relative z-10">
         <div className="flex items-center justify-between">
@@ -253,17 +259,10 @@ const QRScannerPage: React.FC = () => {
       </header>
 
       {/* Camera View */}
-      <div className="relative flex-1 flex items-center justify-center">
+      <div className="relative h-full flex items-center justify-center">
         {error ? (
           <div className="text-center p-8">
-            <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-white text-lg mb-4">{error}</p>
-            <button
-              onClick={handleRetry}
-              className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              再試行
-            </button>
           </div>
         ) : (
           <>
@@ -273,7 +272,7 @@ const QRScannerPage: React.FC = () => {
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
             
             {/* Hidden Canvas for QR Detection */}
@@ -283,11 +282,11 @@ const QRScannerPage: React.FC = () => {
             />
 
             {/* QR Code Scanning Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex justify-center" style={{alignItems: 'flex-start', paddingTop: '20vh'}}>
               {/* Scanning Frame */}
               <div className="relative">
                 {/* QR Code Frame */}
-                <div className="w-64 h-64 relative">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 relative">
                   {/* Corner Brackets */}
                   <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-white"></div>
                   <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-white"></div>
@@ -300,7 +299,7 @@ const QRScannerPage: React.FC = () => {
                   </div>
 
                   {/* Scanning Animation */}
-                  {isScanning && isWaitingForQR && (
+                  {isScanning && isWaitingForQR && !showLinkButton && (
                     <div className="absolute inset-0 overflow-hidden">
                       <div className="w-full h-1 bg-green-400 opacity-80 animate-pulse"></div>
                     </div>
@@ -308,25 +307,32 @@ const QRScannerPage: React.FC = () => {
                 </div>
 
                 {/* Instructions */}
-                <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 text-center">
-                  <p className="text-white text-sm mb-2">
-                    {isWaitingForQR ? 'QRコードをフレーム内に合わせてください' : 'QRコード読み取り完了'}
+                <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2 text-center">
+                  <p className="text-white text-sm mb-3">
+                    {showLinkButton ? 'QRコードが検出されました' : 'QRコードをフレーム内に合わせてください'}
                   </p>
-                  {/* Test button for QR detection */}
-                  <button
-                    onClick={handleTestQRDetection}
-                    className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700 transition-colors"
-                  >
-                    テスト検出
-                  </button>
                 </div>
+
+                {/* Link Button (iPhone style) */}
+                {showLinkButton && (
+                  <div className="absolute top-full mt-16 left-1/2 transform -translate-x-1/2">
+                    <button
+                      onClick={handleLinkClick}
+                      className="bg-yellow-400 text-black px-6 py-3 rounded-full font-medium text-sm shadow-lg hover:bg-yellow-300 transition-colors flex items-center space-x-2"
+                    >
+                      <span>🔗</span>
+                      <span>作業を開始</span>
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
 
             {/* Dark Overlay with Cutout */}
             <div className="absolute inset-0 bg-black bg-opacity-50 pointer-events-none">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className={`w-64 h-64 bg-transparent border-2 border-dashed rounded-lg transition-colors ${
+              <div className="absolute inset-0 flex justify-center" style={{alignItems: 'flex-start', paddingTop: '20vh'}}>
+                <div className={`w-56 h-56 sm:w-64 sm:h-64 bg-transparent border-2 border-dashed rounded-lg transition-colors ${
                   isWaitingForQR ? 'border-white border-opacity-30' : 'border-green-400 border-opacity-80'
                 }`}></div>
               </div>
@@ -337,21 +343,21 @@ const QRScannerPage: React.FC = () => {
 
       {/* Bottom Controls */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black to-transparent">
-        <div className="flex justify-center space-x-4">
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
           <button
             onClick={handleBack}
-            className="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            className="w-full sm:w-auto px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
           >
             戻る
           </button>
-          <button
-            onClick={handleRetry}
-            className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2"
-            disabled={!error}
-          >
-            <Camera className="w-5 h-5" />
-            <span>再スキャン</span>
-          </button>
+          {!showLinkButton && (
+            <button
+              onClick={() => handleQRDetected('TEST_QR_CODE_' + Date.now())}
+              className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              テストスキャン
+            </button>
+          )}
         </div>
       </div>
 
