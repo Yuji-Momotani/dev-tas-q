@@ -6,7 +6,7 @@
 
 ```sh
 # オプション-dはお好きにどうぞ
-docker compose run
+docker compose up
 ```
 
 ### ローカル起動
