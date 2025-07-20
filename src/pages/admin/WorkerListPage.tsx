@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
+import NotificationModal from '../../components/NotificationModal';
 import { mockWorkerDetails, mockWorkItems, workerMasterData } from '../../data/mockData';
 import { UserPlus, Download } from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
@@ -13,6 +14,9 @@ const WorkerListPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedSkill, setSelectedSkill] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
+
+  // 通達実施モーダル関連の状態
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
   // ヘッダーチェックボックスの状態を計算
   const isAllChecked = workerMasterData.length > 0 && checkedItems.size === workerMasterData.length;
@@ -62,7 +66,27 @@ const WorkerListPage: React.FC = () => {
   };
   
   const handleNotification = () => {
-    alert('通達実施機能は現在実装中です。');
+    if (checkedItems.size === 0) {
+      alert('通達を送信する作業者を選択してください。');
+      return;
+    }
+    setIsNotificationModalOpen(true);
+  };
+
+  const handleCloseNotificationModal = () => {
+    setIsNotificationModalOpen(false);
+  };
+
+  const handleSendNotification = (data: { recipients: string[]; title: string; content: string }) => {
+    console.log('通達送信:', data);
+    alert(`${data.recipients.length}名の作業者に通達を送信しました。`);
+    // 送信後、チェックボックスをクリア
+    setCheckedItems(new Set());
+  };
+
+  // チェックされた作業者の情報を取得
+  const getSelectedWorkers = () => {
+    return workerMasterData.filter(worker => checkedItems.has(worker.id));
   };
 
   const handleExportCSV = () => {
@@ -266,6 +290,14 @@ const WorkerListPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* 通達実施モーダル */}
+      <NotificationModal
+        isOpen={isNotificationModalOpen}
+        onClose={handleCloseNotificationModal}
+        selectedWorkers={getSelectedWorkers()}
+        onSend={handleSendNotification}
+      />
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
