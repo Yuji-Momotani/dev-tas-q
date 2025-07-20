@@ -6,13 +6,15 @@ interface NotificationModalProps {
   onClose: () => void;
   selectedWorkers: Array<{ id: string; name: string }>;
   onSend: (data: { recipients: string[]; title: string; content: string }) => void;
+  onRemoveWorker: (workerId: string) => void;
 }
 
 const NotificationModal: React.FC<NotificationModalProps> = ({
   isOpen,
   onClose,
   selectedWorkers,
-  onSend
+  onSend,
+  onRemoveWorker
 }) => {
   const [formData, setFormData] = useState({
     title: '',
@@ -33,9 +35,12 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   };
 
   const removeRecipient = (workerId: string) => {
-    // この機能は親コンポーネントで管理されているため、
-    // 実際の実装では親コンポーネントのコールバックを呼び出す
-    console.log('Remove recipient:', workerId);
+    onRemoveWorker(workerId);
+    
+    // 送信者が1名のみの場合、削除後に0名になるのでモーダルを閉じる
+    if (selectedWorkers.length === 1) {
+      handleClose();
+    }
   };
 
   const validateForm = (): boolean => {

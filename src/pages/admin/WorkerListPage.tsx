@@ -84,6 +84,12 @@ const WorkerListPage: React.FC = () => {
     setCheckedItems(new Set());
   };
 
+  const handleRemoveWorker = (workerId: string) => {
+    const newCheckedItems = new Set(checkedItems);
+    newCheckedItems.delete(workerId);
+    setCheckedItems(newCheckedItems);
+  };
+
   // チェックされた作業者の情報を取得
   const getSelectedWorkers = () => {
     return workerMasterData.filter(worker => checkedItems.has(worker.id));
@@ -297,6 +303,7 @@ const WorkerListPage: React.FC = () => {
         onClose={handleCloseNotificationModal}
         selectedWorkers={getSelectedWorkers()}
         onSend={handleSendNotification}
+        onRemoveWorker={handleRemoveWorker}
       />
       
       <footer className="p-4 text-right text-xs text-gray-500">
