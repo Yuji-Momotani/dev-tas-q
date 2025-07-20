@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
+import NotificationModal from '../../components/NotificationModal';
+import NotificationConfirmationModal from '../../components/NotificationConfirmationModal';
 import { mockWorkerDetails, mockWorkItems, workerMasterData } from '../../data/mockData';
 import { UserPlus, Download } from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
@@ -13,6 +15,15 @@ const WorkerListPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedSkill, setSelectedSkill] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
+
+  // 通達実施モーダル関連の状態
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [notificationData, setNotificationData] = useState<{
+    recipients: string[];
+    title: string;
+    content: string;
+  } | null>(null);
 
   // ヘッダーチェックボックスの状態を計算
   const isAllChecked = workerMasterData.length > 0 && checkedItems.size === workerMasterData.length;
@@ -62,7 +73,50 @@ const WorkerListPage: React.FC = () => {
   };
   
   const handleNotification = () => {
-    alert('通達実施機能は現在実装中です。');
+    if (checkedItems.size === 0) {
+      alert('通達を送信する作業者を選択してください。');
+      return;
+    }
+    setIsNotificationModalOpen(true);
+  };
+
+  const handleCloseNotificationModal = () => {
+    setIsNotificationModalOpen(false);
+    setNotificationData(null);
+  };
+
+  const handleConfirmNotification = (data: { recipients: string[]; title: string; content: string }) => {
+    setNotificationData(data);
+    setIsNotificationModalOpen(false);
+    setIsConfirmationModalOpen(true);
+  };
+
+  const handleCloseConfirmationModal = () => {
+    setIsConfirmationModalOpen(false);
+    setNotificationData(null);
+    setIsNotificationModalOpen(true);
+  };
+
+  const handleFinalSend = () => {
+    if (notificationData) {
+      console.log('通達送信:', notificationData);
+      alert(`${notificationData.recipients.length}名の作業者に通達を送信しました。`);
+      // 送信後、チェックボックスをクリア
+      setCheckedItems(new Set());
+      setIsConfirmationModalOpen(false);
+      setNotificationData(null);
+    }
+  };
+
+  const handleRemoveWorker = (workerId: string) => {
+    const newCheckedItems = new Set(checkedItems);
+    newCheckedItems.delete(workerId);
+    setCheckedItems(newCheckedItems);
+  };
+
+  // チェックされた作業者の情報を取得
+  const getSelectedWorkers = () => {
+    return workerMasterData.filter(worker => checkedItems.has(worker.id));
   };
 
   const handleExportCSV = () => {
@@ -266,6 +320,25 @@ const WorkerListPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* 通達実施モーダル */}
+      <NotificationModal
+        isOpen={isNotificationModalOpen}
+        onClose={handleCloseNotificationModal}
+        selectedWorkers={getSelectedWorkers()}
+        onConfirm={handleConfirmNotification}
+        onRemoveWorker={handleRemoveWorker}
+      />
+      
+      {/* 通達実施内容確認モーダル */}
+      <NotificationConfirmationModal
+        isOpen={isConfirmationModalOpen}
+        onClose={handleCloseConfirmationModal}
+        onConfirm={handleFinalSend}
+        selectedWorkers={getSelectedWorkers()}
+        title={notificationData?.title || ''}
+        content={notificationData?.content || ''}
+      />
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
