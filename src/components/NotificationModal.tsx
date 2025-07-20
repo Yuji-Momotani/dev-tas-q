@@ -5,7 +5,7 @@ interface NotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedWorkers: Array<{ id: string; name: string }>;
-  onSend: (data: { recipients: string[]; title: string; content: string }) => void;
+  onConfirm: (data: { recipients: string[]; title: string; content: string }) => void;
   onRemoveWorker: (workerId: string) => void;
 }
 
@@ -13,7 +13,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   isOpen,
   onClose,
   selectedWorkers,
-  onSend,
+  onConfirm,
   onRemoveWorker
 }) => {
   const [formData, setFormData] = useState({
@@ -64,12 +64,11 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
 
   const handleSend = () => {
     if (validateForm()) {
-      onSend({
+      onConfirm({
         recipients: selectedWorkers.map(worker => worker.id),
         title: formData.title,
         content: formData.content
       });
-      handleClose();
     }
   };
 
