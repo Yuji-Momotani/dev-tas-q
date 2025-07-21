@@ -4,18 +4,13 @@ import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
 import NotificationConfirmationModal from '../../components/NotificationConfirmationModal';
 import { mockWorkerDetails, mockWorkItems, workerMasterData } from '../../data/mockData';
-import { UserPlus, Download } from 'lucide-react';
+import { UserPlus, Download, X } from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
 import { exportWorkerListCSV } from '../../utils/csvExport';
 
 const WorkerListPage: React.FC = () => {
   const navigate = useNavigate();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedSkill, setSelectedSkill] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('');
-
   // 通達実施モーダル関連の状態
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -24,6 +19,15 @@ const WorkerListPage: React.FC = () => {
     title: string;
     content: string;
   } | null>(null);
+  
+  // 作業者作成モーダル関連の状態
+  const [showWorkerModal, setShowWorkerModal] = useState(false);
+  const [workerFormData, setWorkerFormData] = useState({
+    name: '',
+    email: '',
+    skills: '',
+    group: ''
+  });
 
   // ヘッダーチェックボックスの状態を計算
   const isAllChecked = workerMasterData.length > 0 && checkedItems.size === workerMasterData.length;
@@ -69,7 +73,32 @@ const WorkerListPage: React.FC = () => {
   };
 
   const handleAddWorker = () => {
-    alert('作業者追加機能は現在実装中です。');
+    setShowWorkerModal(true);
+  };
+
+  const handleCloseWorkerModal = () => {
+    setShowWorkerModal(false);
+    setWorkerFormData({
+      name: '',
+      email: '',
+      skills: '',
+      group: ''
+    });
+  };
+
+  const handleWorkerFormChange = (field: string, value: string) => {
+    setWorkerFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleWorkerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // TODO: Implement actual worker creation logic
+    console.log('新しい作業者:', workerFormData);
+    alert('作業者が作成されました！');
+    handleCloseWorkerModal();
   };
   
   const handleNotification = () => {
@@ -168,66 +197,19 @@ const WorkerListPage: React.FC = () => {
         <div className="bg-white rounded-md shadow-sm p-4">
           <div className="flex flex-wrap gap-4 items-end mb-4">
             <button
+              onClick={handleAddWorker}
+              className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+            >
+              作業者作成
+            </button>
+            <button
               onClick={handleNotification}
               className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
               通達実施
             </button>
             
-            <button
-              onClick={handleAddWorker}
-              className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-            >
-              検索
-            </button>
-            
             <SearchBar onSearch={() => {}} />
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">次回来社日</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <span>-</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">スキル</span>
-              <select
-                value={selectedSkill}
-                onChange={(e) => setSelectedSkill(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">全て</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">グループ</span>
-              <select
-                value={selectedGroup}
-                onChange={(e) => setSelectedGroup(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">全て</option>
-                <option value="グループAA">グループAA</option>
-                <option value="グループBA">グループBA</option>
-                <option value="グループ3B">グループ3B</option>
-              </select>
-            </div>
             
             <button
               onClick={handleExportCSV}
@@ -339,6 +321,113 @@ const WorkerListPage: React.FC = () => {
         title={notificationData?.title || ''}
         content={notificationData?.content || ''}
       />
+
+      {/* 作業者作成モーダル */}
+      {showWorkerModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <UserPlus className="w-5 h-5 mr-2" />
+                作業者作成
+              </h2>
+              <button
+                onClick={handleCloseWorkerModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleWorkerSubmit} className="p-6">
+              {/* 作業者氏名 */}
+              <div className="mb-4">
+                <label htmlFor="workerName" className="block text-sm font-medium text-gray-700 mb-2">
+                  作業者氏名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="workerName"
+                  value={workerFormData.name}
+                  onChange={(e) => handleWorkerFormChange('name', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="作業者氏名を入力してください"
+                  required
+                />
+              </div>
+
+              {/* メールアドレス */}
+              <div className="mb-4">
+                <label htmlFor="workerEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                  メールアドレス <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="workerEmail"
+                  value={workerFormData.email}
+                  onChange={(e) => handleWorkerFormChange('email', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="example@example.com"
+                  required
+                />
+              </div>
+
+              {/* スキル */}
+              <div className="mb-4">
+                <label htmlFor="workerSkills" className="block text-sm font-medium text-gray-700 mb-2">
+                  スキル
+                </label>
+                <textarea
+                  id="workerSkills"
+                  value={workerFormData.skills}
+                  onChange={(e) => handleWorkerFormChange('skills', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="スキルについて入力してください"
+                />
+              </div>
+
+              {/* グループ */}
+              <div className="mb-6">
+                <label htmlFor="workerGroup" className="block text-sm font-medium text-gray-700 mb-2">
+                  グループ <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="workerGroup"
+                  value={workerFormData.group}
+                  onChange={(e) => handleWorkerFormChange('group', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">グループを選択してください</option>
+                  <option value="グループAA">グループAA</option>
+                  <option value="グループBA">グループBA</option>
+                  <option value="グループ3B">グループ3B</option>
+                </select>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCloseWorkerModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  作成
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
