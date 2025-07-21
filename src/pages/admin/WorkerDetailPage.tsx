@@ -23,9 +23,6 @@ const WorkerDetailPage: React.FC = () => {
     navigate('/admin/work-videos');
   };
 
-  const handleWorkList = () => {
-    navigate('/admin/work-list');
-  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -43,6 +40,10 @@ const WorkerDetailPage: React.FC = () => {
       setIsEditing(false);
       alert('変更が保存されました。');
     }
+  };
+
+  const handleWorkerList = () => {
+    navigate('/admin/worker-list');
   };
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -78,10 +79,10 @@ const WorkerDetailPage: React.FC = () => {
           </div>
           <div className="flex space-x-2">
             <button
-              onClick={handleWorkList}
+              onClick={handleWorkerList}
               className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
             >
-              作業状況一覧
+              作業者一覧
             </button>
             <button
               onClick={handleLogout}
@@ -110,10 +111,10 @@ const WorkerDetailPage: React.FC = () => {
         </div>
         <div className="flex space-x-2">
           <button
-            onClick={handleWorkList}
+            onClick={handleWorkerList}
             className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
           >
-            作業状況一覧
+            作業者一覧
           </button>
           <button
             onClick={handleLogout}
