@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, QrCode, LogOut } from 'lucide-react';
+import { Menu, QrCode, LogOut, CheckCircle } from 'lucide-react';
 import { getUserWorkItems, hasActiveWork, setUserWorkFromQR, clearUserWorkData } from '../../data/userMockData';
 import { UserWorkItem } from '../../types/user';
 
@@ -8,8 +8,7 @@ const UserWorkPage: React.FC = () => {
   const navigate = useNavigate();
   const [currentUser] = useState('test@example.com'); // 実際の実装では認証状態から取得
   const [workItems, setWorkItems] = useState<UserWorkItem[]>([]);
-  const [hasWork, setHasWork] = useState(false);
-  const [qrData, setQrData] = useState<any>(null);
+  const [hasWork, setHasWork] = useState<any>(null);
 
   // QRコード読み取り結果を受け取る処理
   useEffect(() => {
@@ -17,7 +16,7 @@ const UserWorkPage: React.FC = () => {
     if (qrResult) {
       try {
         const parsedResult = JSON.parse(qrResult);
-        setQrData(parsedResult);
+        setHasWork(parsedResult);
         setUserWorkFromQR(currentUser, qrResult);
         sessionStorage.removeItem('qrResult');
       } catch (error) {
@@ -29,25 +28,25 @@ const UserWorkPage: React.FC = () => {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    // QRコード読み取り結果がない場合、作業データを初期化
-    const qrResult = sessionStorage.getItem('qrResult');
-    if (!qrResult) {
-      clearUserWorkData(currentUser);
-    }
+  // useEffect(() => {
+  //   // QRコード読み取り結果がない場合、作業データを初期化
+  //   const qrResult = sessionStorage.getItem('qrResult');
+  //   if (!qrResult) {
+  //     clearUserWorkData(currentUser);
+  //   }
     
-    // ユーザーの作業データを取得
-    const userWork = getUserWorkItems(currentUser);
-    setWorkItems(userWork);
-    setHasWork(hasActiveWork(currentUser));
-  }, [currentUser]);
+  //   // ユーザーの作業データを取得
+  //   const userWork = getUserWorkItems(currentUser);
+  //   setWorkItems(userWork);
+  //   setHasWork(hasActiveWork(currentUser));
+  // }, [currentUser]);
 
-  // データの再読み込み関数
-  const refreshWorkData = () => {
-    const userWork = getUserWorkItems(currentUser);
-    setWorkItems(userWork);
-    setHasWork(hasActiveWork(currentUser));
-  };
+  // // データの再読み込み関数
+  // const refreshWorkData = () => {
+  //   const userWork = getUserWorkItems(currentUser);
+  //   setWorkItems(userWork);
+  //   setHasWork(hasActiveWork(currentUser));
+  // };
 
   const handleLogout = () => {
     navigate('/user/login');
@@ -62,9 +61,9 @@ const UserWorkPage: React.FC = () => {
   };
 
   // QRスキャナーから戻ってきた時の処理
-  useEffect(() => {
-    refreshWorkData();
-  }, []);
+  // useEffect(() => {
+  //   refreshWorkData();
+  // }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -90,6 +89,11 @@ const UserWorkPage: React.FC = () => {
       default:
         return '';
     }
+  };
+
+  const handleCompleteWork = () => {
+    // 配送方法選択画面に遷移
+    navigate('/user/delivery-method');
   };
 
   return (
@@ -126,44 +130,50 @@ const UserWorkPage: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {qrData ? (
-            // QRコード読み取り後の表示
+        
+          {hasWork ? (
+            // QRコード読み取り後 or 既存の作業がある場合
             <div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                {qrData.company}
-              </h2>
-              <div className="flex items-center space-x-4 mb-6">
-                <h3 className="text-2xl font-semibold text-gray-700">
-                  {qrData.task}
-                </h3>
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white bg-red-500">
-                  作業着手中
-                </span>
-              </div>
-            </div>
-          ) : hasWork ? (
-            // 既存の作業がある場合の表示
-            <div>
-              {workItems.map((work) => (
-                <div key={work.id} className="mb-8">
-                  <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                    {work.companyName}
-                  </h2>
-                  <div className="flex items-center space-x-4 mb-6">
-                    <h3 className="text-2xl font-semibold text-gray-700">
-                      {work.workName}
-                    </h3>
-                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(work.status)}`}>
-                      {getStatusText(work.status)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+							<div className="mb-8">
+								<div className="w-full bg-gray-200 rounded-lg aspect-video flex items-center justify-center">
+									<div className="text-center">
+										<div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+											<svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+												<path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+											</svg>
+										</div>
+										<p className="text-gray-600 text-sm">作業手順動画</p>
+										<p className="text-gray-500 text-xs mt-1">クリックで再生</p>
+									</div>
+								</div>
+							</div>
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+								<h2 className="text-3xl font-bold text-gray-800 mb-6">
+									{hasWork.company}
+								</h2>
+								<div className="flex items-center space-x-4 mb-8">
+									<h3 className="text-2xl font-semibold text-gray-700">
+										{hasWork.task}
+									</h3>
+									<span className="inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white bg-red-500">
+										作業着手中
+									</span>
+								</div>
+							</div>
+							{/* 作業完了ボタン */}
+							<div className="mt-8">
+								<button
+									onClick={handleCompleteWork}
+									className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-medium text-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-3"
+								>
+									<CheckCircle className="w-6 h-6" />
+									<span>作業完了</span>
+								</button>
+							</div>
+						</div>
           ) : (
             // 作業がない場合の表示（作業待機中）
-            <div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-3xl font-bold text-gray-800 mb-8">
                 作業待機中
               </h2>
@@ -174,7 +184,7 @@ const UserWorkPage: React.FC = () => {
           )}
 
           {/* QR Code Button - QRコード読み取り後は非表示 */}
-          {!qrData && (
+          {!hasWork && (
             <div className="mt-12">
               <button
                 onClick={handleQRCodeScan}
@@ -185,11 +195,10 @@ const UserWorkPage: React.FC = () => {
               </button>
             </div>
           )}
-        </div>
       </div>
 
       {/* Footer */}
-      <footer className="fixed bottom-0 right-0 p-4">
+      <footer className="p-4 text-right">
         <p className="text-xs text-gray-500">©️〇〇〇〇会社</p>
       </footer>
     </div>

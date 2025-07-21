@@ -12,6 +12,7 @@ import UserLoginPage from './pages/user/UserLoginPage';
 import UserWorkPage from './pages/user/UserWorkPage';
 import QRScannerPage from './pages/user/QRScannerPage';
 import UserMyPage from './pages/user/UserMyPage';
+import DeliveryMethodPage from './pages/user/DeliveryMethodPage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,6 +33,7 @@ function App() {
         <Route path="/user/work" element={<UserWorkPage />} />
         <Route path="/user/qr-scanner" element={<QRScannerPage />} />
         <Route path="/user/mypage" element={<UserMyPage />} />
+        <Route path="/user/delivery-method" element={<DeliveryMethodPage />} />
       </Routes>
     </Router>
   );
