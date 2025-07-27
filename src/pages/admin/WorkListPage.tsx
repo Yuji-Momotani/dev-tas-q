@@ -6,7 +6,8 @@ import { mockWorkItems, workerMasterData } from '../../data/mockData';
 import { WorkItem } from '../../types/admin';
 import { Download, Printer } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
-import QRCode from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
+import { createRoot } from 'react-dom/client';
 
 const WorkListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -130,68 +131,85 @@ const WorkListPage: React.FC = () => {
 
   const handlePrint = (workItem: WorkItem) => {
     // QRコードに埋め込むモックデータ
-    const qrData = "workerid:1,workid:1";
+    console.log(workItem);
+    const qrData = `workerid:1,workid:${workItem.id}`;
 
-    // 印刷プレビュー用の新しいウィンドウを開く
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>QRコード印刷</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-                height: 100vh;
-                margin: 0;
-              }
-              .qr-container {
-                text-align: center;
-              }
-              #qr-code canvas {
-                border: 1px solid #ccc;
-              }
-              @media print {
-                body { 
-                  margin: 0;
-                  height: auto;
-                }
-              }
-            </style>
-            <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-            <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-            <script src="https://unpkg.com/qrcode.react@3.1.0/lib/index.js"></script>
-          </head>
-          <body>
-            <div class="qr-container">
-              <div id="qr-code"></div>
-            </div>
-            <script>
-              // QRコード生成
-              const qrElement = React.createElement(QRCodeReact.default, {
-                value: '${qrData}',
-                size: 256,
-                level: 'M'
-              });
-              
-              ReactDOM.render(qrElement, document.getElementById('qr-code'));
-              
-              // 少し待ってから印刷プレビューを表示
-              setTimeout(() => {
-                window.print();
-              }, 500);
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    }
+    // QRコードを生成するための隠し要素を作成
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+
+    // QRCodeCanvasをレンダリング
+    const root = createRoot(tempDiv);
+    const qrCodeElement = React.createElement(QRCodeCanvas, {
+      value: qrData,
+      size: 256,
+      level: 'M'
+    });
+    root.render(qrCodeElement);
+
+    // QRコードのレンダリング完了を待つ
+    setTimeout(() => {
+      const qrCanvas = tempDiv.querySelector('canvas');
+      if (qrCanvas) {
+        const qrDataUrl = qrCanvas.toDataURL('image/png');
+
+        // 印刷プレビュー用の新しいウィンドウを開く
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>QRコード印刷</title>
+                <style>
+                  body {
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                    height: 100vh;
+                    margin: 0;
+                  }
+                  .qr-container {
+                    text-align: center;
+                  }
+                  .qr-image {
+                    border: 1px solid #ccc;
+                  }
+                  @media print {
+                    body { 
+                      margin: 0;
+                      height: auto;
+                    }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="qr-container">
+                  <h2>作業QRコード</h2>
+                  <img src="${qrDataUrl}" alt="QRコード" class="qr-image" />
+                  <p>作業ID: ${workItem.id}</p>
+                </div>
+                <script>
+                  // 少し待ってから印刷プレビューを表示
+                  setTimeout(() => {
+                    window.print();
+                  }, 1000);
+                </script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+        }
+      }
+      
+      // 一時的な要素を削除
+      document.body.removeChild(tempDiv);
+    }, 100);
   };
 
   return (
@@ -207,7 +225,6 @@ const WorkListPage: React.FC = () => {
         <div className="flex space-x-2">
           <button className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
             onClick={() => navigate('/admin/worker-list')}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
           >
             作業者一覧
           </button>
@@ -339,7 +356,7 @@ const WorkListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((item, index) => (
+                {filteredItems.map((item) => (
                   <tr 
                     key={item.id} 
                     className="hover:bg-gray-50"
