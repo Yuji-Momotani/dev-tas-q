@@ -19,6 +19,9 @@ FROM base AS development
 # Expose port 3000
 EXPOSE 3000
 
+# Default command for development
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+
 # Build stage
 FROM base AS build
 

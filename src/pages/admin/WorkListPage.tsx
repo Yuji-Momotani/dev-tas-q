@@ -4,8 +4,10 @@ import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
 import { mockWorkItems, workerMasterData } from '../../data/mockData';
 import { WorkItem } from '../../types/admin';
-import { Download } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
+import { QRCodeCanvas } from 'qrcode.react';
+import { createRoot } from 'react-dom/client';
 
 const WorkListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -127,6 +129,89 @@ const WorkListPage: React.FC = () => {
     exportWorkListCSV(filteredItems);
   };
 
+  const handlePrint = (workItem: WorkItem) => {
+    // QRコードに埋め込むモックデータ
+    console.log(workItem);
+    const qrData = `workerid:1,workid:${workItem.id}`;
+
+    // QRコードを生成するための隠し要素を作成
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+
+    // QRCodeCanvasをレンダリング
+    const root = createRoot(tempDiv);
+    const qrCodeElement = React.createElement(QRCodeCanvas, {
+      value: qrData,
+      size: 256,
+      level: 'M'
+    });
+    root.render(qrCodeElement);
+
+    // QRコードのレンダリング完了を待つ
+    setTimeout(() => {
+      const qrCanvas = tempDiv.querySelector('canvas');
+      if (qrCanvas) {
+        const qrDataUrl = qrCanvas.toDataURL('image/png');
+
+        // 印刷プレビュー用の新しいウィンドウを開く
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>QRコード印刷</title>
+                <style>
+                  body {
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                    height: 100vh;
+                    margin: 0;
+                  }
+                  .qr-container {
+                    text-align: center;
+                  }
+                  .qr-image {
+                    border: 1px solid #ccc;
+                  }
+                  @media print {
+                    body { 
+                      margin: 0;
+                      height: auto;
+                    }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="qr-container">
+                  <h2>作業QRコード</h2>
+                  <img src="${qrDataUrl}" alt="QRコード" class="qr-image" />
+                  <p>作業ID: ${workItem.id}</p>
+                </div>
+                <script>
+                  // 少し待ってから印刷プレビューを表示
+                  setTimeout(() => {
+                    window.print();
+                  }, 1000);
+                </script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+        }
+      }
+      
+      // 一時的な要素を削除
+      document.body.removeChild(tempDiv);
+    }, 100);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -140,7 +225,6 @@ const WorkListPage: React.FC = () => {
         <div className="flex space-x-2">
           <button className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
             onClick={() => navigate('/admin/worker-list')}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
           >
             作業者一覧
           </button>
@@ -245,6 +329,9 @@ const WorkListPage: React.FC = () => {
             <table className="min-w-full border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-100">
+                  <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-20">
+                    印刷
+                  </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     作業名
                   </th>
@@ -269,13 +356,27 @@ const WorkListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((item, index) => (
+                {filteredItems.map((item) => (
                   <tr 
                     key={item.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleRowClick(item.id)}
+                    className="hover:bg-gray-50"
                   >
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePrint(item);
+                        }}
+                        className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                        title="印刷"
+                      >
+                        <Printer size={16} />
+                      </button>
+                    </td>
+                    <td 
+                      className="border border-gray-300 px-4 py-3 text-sm text-gray-900 cursor-pointer"
+                      onClick={() => handleRowClick(item.id)}
+                    >
                       {item.id} / {item.name}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
