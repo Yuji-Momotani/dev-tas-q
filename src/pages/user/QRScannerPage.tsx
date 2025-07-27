@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
-import jsQR from 'jsqr';
+import QrScanner from 'qr-scanner';
 
 const QRScannerPage: React.FC = () => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationRef = useRef<number>(0);
-  const barcodeDetectorRef = useRef<BarcodeDetector | null>(null);
+  const qrScannerRef = useRef<QrScanner | null>(null);
   const isInitializingRef = useRef(false);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>('');
@@ -19,6 +16,9 @@ const QRScannerPage: React.FC = () => {
 
   useEffect(() => {
     const initializeScanner = async () => {
+      // 二重初期化を防ぐ
+      if (isInitializingRef.current) return;
+      
       await startQRScanner();
     };
     
@@ -29,7 +29,7 @@ const QRScannerPage: React.FC = () => {
   }, []);
 
   const startQRScanner = async () => {
-    // 既に初期化中の場合は処理をスキップ
+    // 二重初期化を防ぐ
     if (isInitializingRef.current) {
       return;
     }
@@ -37,49 +37,46 @@ const QRScannerPage: React.FC = () => {
     isInitializingRef.current = true;
     
     try {
-      // 既存のストリームを停止
+      // 既存のスキャナーを停止
       stopQRScanner();
 
-      if (!videoRef.current || !canvasRef.current) {
+      if (!videoRef.current) {
         setError('カメラ要素が見つかりません。');
         return;
       }
 
-      // BarcodeDetectorの初期化（対応している場合）
-      if ('BarcodeDetector' in window) {
-        try {
-          barcodeDetectorRef.current = new BarcodeDetector({
-            formats: ['qr_code']
-          });
-        } catch (err) {
-          console.warn('BarcodeDetector初期化エラー:', err);
+      // video要素のイベントリスナーを追加してエラーをキャッチ
+      const video = videoRef.current;
+      video.addEventListener('error', (e) => {
+        console.warn('Video error:', e);
+      });
+
+      // QrScannerインスタンスを作成
+      qrScannerRef.current = new QrScanner(
+        video,
+        (result) => {
+          console.log('QRコード読み取り成功:', result.data);
+          console.log('QRコード詳細情報:', result);
+          handleQRDetected(result.data);
+        },
+        {
+          returnDetailedScanResult: true,
+          preferredCamera: 'environment',
+          maxScansPerSecond: 5 // スキャン頻度を制限
+        }
+      );
+
+      // QRスキャナーを開始（AbortErrorを無視）
+      try {
+        await qrScannerRef.current.start();
+      } catch (startErr) {
+        if (startErr instanceof Error && startErr.name === 'AbortError') {
+          console.warn('Video play interrupted, but continuing...', startErr.message);
+          // AbortErrorは無視して続行
+        } else {
+          throw startErr;
         }
       }
-
-      // カメラストリームを取得
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
-
-      streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-
-      // videoが読み込まれるまで待機
-      await new Promise<void>((resolve) => {
-        const video = videoRef.current!;
-        if (video.readyState >= 2) {
-          resolve();
-        } else {
-          video.addEventListener('loadedmetadata', () => resolve(), { once: true });
-        }
-      });
-
-      // QR検出ループを開始
-      startDetectionLoop();
       
       setIsScanning(true);
       setIsWaitingForQR(true);
@@ -94,6 +91,8 @@ const QRScannerPage: React.FC = () => {
         setError('カメラの使用が許可されていません。ブラウザの設定を確認してください。');
       } else if (err instanceof Error && err.name === 'NotFoundError') {
         setError('カメラが見つかりません。');
+      } else if (err instanceof Error && err.name === 'AbortError') {
+        setError(''); // AbortErrorの場合はエラー表示しない
       } else {
         setError('カメラにアクセスできません。ブラウザの設定を確認してください。');
       }
@@ -102,95 +101,19 @@ const QRScannerPage: React.FC = () => {
     }
   };
 
-  const startDetectionLoop = () => {
-    const detect = async () => {
-      if (!videoRef.current || !canvasRef.current || !isScanning) {
-        return;
-      }
-
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx || video.readyState !== 4) {
-        animationRef.current = requestAnimationFrame(detect);
-        return;
-      }
-
-      // canvasのサイズをvideoに合わせる
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      // videoフレームをcanvasに描画
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      try {
-        if (barcodeDetectorRef.current) {
-          // BarcodeDetectorを使用
-          const barcodes = await barcodeDetectorRef.current.detect(canvas);
-          if (barcodes.length > 0) {
-            console.log('BarcodeDetectorでQRコード検出:', barcodes[0].rawValue);
-            handleQRDetected(barcodes[0].rawValue);
-            return;
-          }
-        }
-        
-        // jsQRを常に試行（BarcodeDetectorと並行して使用）
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const qrResult = await simulateQRDetection(imageData);
-        if (qrResult) {
-          console.log('jsQRでQRコード検出:', qrResult);
-          handleQRDetected(qrResult);
-          return;
-        }
-        
-        // QRコードが検出されなかった場合、リンクボタンを非表示
-        if (showLinkButton) {
-          setShowLinkButton(false);
-          setDetectedQR(null);
-        }
-      } catch (err) {
-        console.warn('QR検出エラー:', err);
-      }
-
-      // 次のフレームを処理（検出頻度を上げる）
-      animationRef.current = requestAnimationFrame(detect);
-    };
-
-    detect();
-  };
-
-  const simulateQRDetection = async (imageData: ImageData): Promise<string | null> => {
-    try {
-      // jsQRライブラリを使用してQRコードを検出
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      if (code) {
-        return code.data;
-      }
-    } catch (err) {
-      console.warn('jsQR検出エラー:', err);
-    }
-    return null;
-  };
 
   const stopQRScanner = () => {
     isInitializingRef.current = false;
     
-    // アニメーションフレームをキャンセル
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = 0;
-    }
-    
-    // メディアストリームを停止
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    
-    // video要素をクリア
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
+    // QrScannerインスタンスを停止・破棄
+    if (qrScannerRef.current) {
+      try {
+        qrScannerRef.current.stop();
+        qrScannerRef.current.destroy();
+      } catch (err) {
+        console.warn('QrScanner停止エラー（無視）:', err);
+      }
+      qrScannerRef.current = null;
     }
     
     setIsScanning(false);
@@ -210,11 +133,17 @@ const QRScannerPage: React.FC = () => {
   // QRコード読み取り成功時の処理
   const handleQRDetected = (qrData: string) => {
     console.log('QRコード読み取り成功:', qrData);
+    console.log('QRコードの内容をデバッグ出力:', JSON.stringify(qrData));
     
     // 検出されたQRコードを保存し、リンクボタンを表示
     setDetectedQR(qrData);
     setShowLinkButton(true);
     setIsWaitingForQR(false);
+    
+    // スキャナーを一時停止（連続検出を防ぐ）
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop();
+    }
   };
 
   // リンクボタンクリック時の処理
@@ -273,12 +202,6 @@ const QRScannerPage: React.FC = () => {
               playsInline
               muted
               className="absolute inset-0 w-full h-full object-cover"
-            />
-            
-            {/* Hidden Canvas for QR Detection */}
-            <canvas
-              ref={canvasRef}
-              className="hidden"
             />
 
             {/* QR Code Scanning Overlay */}
