@@ -1,20 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, X } from 'lucide-react';
-import { mockAccounts } from '../../data/mockData';
+import { inviteAdminByEmail, supabaseAdmin } from '../../utils/supabaseAdmin';
+import { supabase } from '../../utils/supabase';
+import type { Database } from '../../types/database.types';
+
+type Admin = Database['public']['Tables']['admins']['Row'];
+type AdminRole = Database['public']['Tables']['admin_roles']['Row'];
+
+type AdminWithRole = Admin & {
+  admin_roles?: AdminRole;
+};
 
 const AccountManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [admins, setAdmins] = useState<AdminWithRole[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(true);
   const [formData, setFormData] = useState({
     accountName: '',
     email: '',
-    password: '',
     hasWorkListView: false,
     hasWorkListCreate: false,
     hasWorkListUpdate: false,
     hasWorkListDelete: false
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const fetchAdmins = async () => {
+    try {
+      setLoadingAdmins(true);
+      
+      // adminsテーブルとadmin_rolesテーブルをJOINして取得
+      const { data, error } = await supabase
+        .from('admins')
+        .select(`
+          *,
+          admin_roles (*)
+        `)
+        .is('deleted_at', null)
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error('管理者一覧取得エラー:', error);
+        return;
+      }
+
+      // admin_rolesは配列で返ってくるので、最初の要素を取得
+      const adminsWithRole = (data || []).map(admin => ({
+        ...admin,
+        admin_roles: admin.admin_roles?.[0] || undefined
+      }));
+
+      setAdmins(adminsWithRole);
+    } catch (err) {
+      console.error('管理者一覧取得処理エラー:', err);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
 
   const handleLogout = () => {
     navigate('/admin/login');
@@ -29,12 +78,13 @@ const AccountManagementPage: React.FC = () => {
     setFormData({
       accountName: '',
       email: '',
-      password: '',
       hasWorkListView: false,
       hasWorkListCreate: false,
       hasWorkListUpdate: false,
       hasWorkListDelete: false
     });
+    setError('');
+    setLoading(false);
   };
 
   const handleFormChange = (field: string, value: string | boolean) => {
@@ -44,12 +94,91 @@ const AccountManagementPage: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual account creation logic
-    console.log('新しいアカウント:', formData);
-    alert('アカウントが作成されました！');
-    handleCloseModal();
+    setError('');
+    setLoading(true);
+
+    try {
+      // 管理者の招待メールを送信
+      const result = await inviteAdminByEmail(formData.email);
+
+      if (!result.success) {
+        setError(result.error || '招待メール送信に失敗しました');
+        return;
+      }
+
+      // 招待されたユーザーのauth_user_idを取得
+      let authUserId = null;
+      if (result.user && result.user.id) {
+        authUserId = result.user.id;
+      }
+
+      // adminsテーブルにレコードを作成
+      const adminData = {
+        email: formData.email,
+        name: formData.accountName,
+        auth_user_id: authUserId,
+      };
+
+      const { data: newAdmin, error: adminError } = await supabase
+        .from('admins')
+        .insert([adminData])
+        .select()
+        .single();
+
+      if (adminError || !newAdmin) {
+        // 管理者テーブル登録失敗時は、作成されたAuthユーザーを削除
+        // (Supabase AuthとPostgreSQLテーブル間ではクロストランザクションできないため)
+        if (authUserId) {
+          try {
+            await supabaseAdmin.auth.admin.deleteUser(authUserId);
+            setError('管理者の作成に失敗しました。\n招待メールは送信されましたが、システムエラーのため取り消されました。');
+          } catch (deleteError) {
+            console.error('Auth ユーザー削除に失敗:', deleteError);
+            setError(`管理者の作成に失敗しました。\n\n重要：管理者に以下の情報を連絡してください。\n- Supabase Authに残存するユーザー メールアドレス: ${formData.email}\n\n手動でSupabase Authからユーザーを削除する必要があります。`);
+          }
+        } else {
+          setError('管理者の作成に失敗しました。');
+        }
+
+        if (adminError.message.includes('JWT') || 
+            adminError.message.includes('unauthorized') ||
+            adminError.message.includes('Invalid JWT') ||
+            adminError.message.includes('expired') ||
+            adminError.code === 'PGRST301') {
+          setError('セッションが期限切れです。再度ログインしてください。');
+        }
+        return;
+      }
+
+      // admin_rolesテーブルにレコードを作成
+      const rolesData = {
+        admin_id: newAdmin.id,
+        allow_working_get: formData.hasWorkListView,
+        allow_working_create: formData.hasWorkListCreate,
+        allow_working_update: formData.hasWorkListUpdate,
+        allow_working_delete: formData.hasWorkListDelete,
+      };
+
+      const { error: rolesError } = await supabase
+        .from('admin_roles')
+        .insert([rolesData]);
+
+      if (rolesError) {
+        console.error('権限設定エラー:', rolesError);
+        // 権限設定に失敗しても、管理者自体は作成されているので続行
+      }
+
+      alert('管理者が正常に作成され、招待メールを送信しました。\n管理者にメールを確認してもらい、パスワードを設定してもらってください。');
+      fetchAdmins(); // 一覧を再取得
+      handleCloseModal();
+    } catch (err) {
+      console.error('管理者作成エラー:', err);
+      setError('管理者の作成に失敗しました');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleWorkVideoList = () => {
@@ -118,45 +247,53 @@ const AccountManagementPage: React.FC = () => {
                     作業状況一覧閲覧
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                    ・・・
+                    作業状況一覧 登録
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                    メール
+                    作業状況一覧 更新
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                    LINE
-                  </th>
-                  <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                    Chatwork
+                    作業状況一覧 削除
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {mockAccounts.map((account) => (
-                  <tr key={account.id} className="hover:bg-gray-50">
-                    <td 
-                      className="border border-gray-300 px-4 py-3 text-sm text-gray-900 cursor-pointer hover:text-blue-600"
-                      onClick={() => navigate(`/admin/account-detail/${account.id}`)}
-                    >
-                      {account.id} / {account.name}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-center">
-                      {account.hasWorkListAccess ? '○' : '×'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-center">
-                      ・・・
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-center">
-                      {account.hasEmailAccess ? '○' : '×'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-center">
-                      {account.hasLineAccess ? '○' : '×'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-center">
-                      {account.hasChatworkAccess ? '○' : '×'}
+                {loadingAdmins ? (
+                  <tr>
+                    <td colSpan={5} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                      読み込み中...
                     </td>
                   </tr>
-                ))}
+                ) : admins.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                      管理者が登録されていません
+                    </td>
+                  </tr>
+                ) : (
+                  admins.map((admin) => (
+                    <tr key={admin.id} className="hover:bg-gray-50">
+                      <td 
+                        className="border border-gray-300 px-4 py-3 text-sm text-gray-900 cursor-pointer hover:text-blue-600"
+                        onClick={() => navigate(`/admin/account-detail/${admin.id}`)}
+                      >
+                        {admin.id} / {admin.name}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-center">
+                        {admin.admin_roles?.allow_working_get ? '○' : '×'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-center">
+                        {admin.admin_roles?.allow_working_create ? '○' : '×'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-center">
+                        {admin.admin_roles?.allow_working_update ? '○' : '×'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-center">
+                        {admin.admin_roles?.allow_working_delete ? '○' : '×'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -187,6 +324,12 @@ const AccountManagementPage: React.FC = () => {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6">
+              {/* エラーメッセージ */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
               {/* アカウント名 */}
               <div className="mb-4">
                 <label htmlFor="accountName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -219,21 +362,6 @@ const AccountManagementPage: React.FC = () => {
                 />
               </div>
 
-              {/* パスワード */}
-              <div className="mb-6">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  パスワード <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={formData.password}
-                  onChange={(e) => handleFormChange('password', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="パスワードを入力してください"
-                  required
-                />
-              </div>
 
               {/* 権限設定 */}
               <div className="mb-6">
@@ -291,9 +419,10 @@ const AccountManagementPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  作成
+                  {loading ? '招待中...' : '招待送信'}
                 </button>
               </div>
             </form>

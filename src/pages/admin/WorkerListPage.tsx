@@ -1,16 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
 import NotificationConfirmationModal from '../../components/NotificationConfirmationModal';
-import { mockWorkerDetails, mockWorkItems, workerMasterData } from '../../data/mockData';
+import WorkerCreateModal from '../../components/WorkerCreateModal';
 import { UserPlus, Download, X } from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
 import { exportWorkerListCSV } from '../../utils/csvExport';
+import { supabase } from '../../utils/supabase';
+import type { Database } from '../../types/database.types';
+import { WorkStatus } from '../../constants/workStatus';
+
+// Supabaseの型定義
+type Worker = Database['public']['Tables']['workers']['Row'];
+type Work = Database['public']['Tables']['works']['Row'];
+
+// 作業者一覧表示用の型
+interface WorkerListItem {
+  id: number;
+  name: string | null;
+  email: string | null;
+  nextVisitDate: string | null;
+  lastWorkDate: string | null;
+  inProgressWork: string | null;
+  plannedWork: string | null;
+  skill: string | null;
+  groupName: string | null;
+}
 
 const WorkerListPage: React.FC = () => {
   const navigate = useNavigate();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [workers, setWorkers] = useState<WorkerListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   // 通達実施モーダル関連の状態
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -22,16 +45,127 @@ const WorkerListPage: React.FC = () => {
   
   // 作業者作成モーダル関連の状態
   const [showWorkerModal, setShowWorkerModal] = useState(false);
-  const [workerFormData, setWorkerFormData] = useState({
-    name: '',
-    email: '',
-    skills: '',
-    group: ''
-  });
+
+  // 認証チェックとデータ取得
+  const checkAuthentication = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        navigate('/admin/login');
+        return;
+      }
+      // 認証確認後、データを取得
+      fetchWorkers();
+    } catch (err) {
+      console.error('認証チェックエラー:', err);
+      navigate('/admin/login');
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
 
   // ヘッダーチェックボックスの状態を計算
-  const isAllChecked = workerMasterData.length > 0 && checkedItems.size === workerMasterData.length;
-  const isIndeterminate = checkedItems.size > 0 && checkedItems.size < workerMasterData.length;
+  const isAllChecked = workers.length > 0 && checkedItems.size === workers.length;
+  const isIndeterminate = checkedItems.size > 0 && checkedItems.size < workers.length;
+
+  // 作業者データを取得
+  const fetchWorkers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // workersテーブルから基本情報を取得し、関連するworks、worker_skills、m_rankをJOIN
+      const { data, error } = await supabase
+        .from('workers')
+        .select(`
+          id,
+          name,
+          email,
+          next_visit_date,
+          group_id,
+          works!left (
+            id,
+            work_title,
+            status,
+            updated_at
+          ),
+          worker_skills!left (
+            rank_id,
+            m_rank (
+              rank
+            )
+          )
+        `)
+        .is('deleted_at', null)
+        .order('name');
+
+      if (error) {
+        // JWT期限切れまたは認証エラーの詳細チェック
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          console.log('作業者取得時にJWT期限切れを検知:', error.message);
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      // データを変換
+      const workerList: WorkerListItem[] = (data || []).map(worker => {
+        const works = worker.works || [];
+        const inProgressWork = works.find(w => w.status === WorkStatus.IN_PROGRESS)?.work_title || null;
+        
+        // 予定作業は複数ある可能性があるので、スラッシュ区切りで結合
+        const plannedWorks = works.filter(w => w.status === WorkStatus.PLANNED).map(w => w.work_title).filter(Boolean);
+        const plannedWork = plannedWorks.length > 0 ? plannedWorks.join(' / ') : null;
+        
+        // 最新の作業日時を取得（完了した作業から）
+        const completedWorks = works.filter(w => w.status === WorkStatus.COMPLETED);
+        const lastWorkDate = completedWorks.length > 0 
+          ? completedWorks.sort((a, b) => new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime())[0].updated_at
+          : null;
+
+        // スキル情報を取得
+        const skill = worker.worker_skills && worker.worker_skills.length > 0 && worker.worker_skills[0].m_rank 
+          ? worker.worker_skills[0].m_rank.rank 
+          : null;
+
+        return {
+          id: worker.id,
+          name: worker.name,
+          email: worker.email,
+          nextVisitDate: worker.next_visit_date,
+          lastWorkDate: lastWorkDate ? formatDate(lastWorkDate) : null,
+          inProgressWork,
+          plannedWork,
+          skill,
+          groupName: null // TODO: groupsテーブルと連携時に実装
+        };
+      });
+
+      setWorkers(workerList);
+    } catch (err) {
+      console.error('作業者データ取得エラー:', err);
+      setError('作業者データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 日付フォーマット
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\//g, '.');
+  };
 
   // ヘッダーチェックボックスのクリック処理
   const handleHeaderCheckboxChange = () => {
@@ -40,7 +174,7 @@ const WorkerListPage: React.FC = () => {
       setCheckedItems(new Set());
     } else {
       // 全てにチェックを入れる
-      const allIds = new Set(workerMasterData.map(worker => worker.id));
+      const allIds = new Set(workers.map(worker => worker.id.toString()));
       setCheckedItems(allIds);
     }
   };
@@ -56,8 +190,15 @@ const WorkerListPage: React.FC = () => {
     setCheckedItems(newCheckedItems);
   };
 
-  const handleLogout = () => {
-    navigate('/admin/login');
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/admin/login');
+    } catch (err) {
+      console.error('ログアウトエラー:', err);
+      // エラーが発生してもログイン画面に遷移
+      navigate('/admin/login');
+    }
   };
 
   const handleAccountManagement = () => {
@@ -78,27 +219,11 @@ const WorkerListPage: React.FC = () => {
 
   const handleCloseWorkerModal = () => {
     setShowWorkerModal(false);
-    setWorkerFormData({
-      name: '',
-      email: '',
-      skills: '',
-      group: ''
-    });
   };
 
-  const handleWorkerFormChange = (field: string, value: string) => {
-    setWorkerFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleWorkerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement actual worker creation logic
-    console.log('新しい作業者:', workerFormData);
-    alert('作業者が作成されました！');
-    handleCloseWorkerModal();
+  const handleWorkerSave = () => {
+    // 作業者作成後にデータを再取得
+    fetchWorkers();
   };
   
   const handleNotification = () => {
@@ -145,11 +270,15 @@ const WorkerListPage: React.FC = () => {
 
   // チェックされた作業者の情報を取得
   const getSelectedWorkers = () => {
-    return workerMasterData.filter(worker => checkedItems.has(worker.id));
+    return workers.filter(worker => checkedItems.has(worker.id.toString())).map(worker => ({
+      id: worker.id.toString(),
+      name: worker.name || '名前未設定'
+    }));
   };
 
   const handleExportCSV = () => {
-    exportWorkerListCSV(workerMasterData);
+    // TODO: Supabaseデータに対応したCSV出力を実装
+    console.log('CSV出力機能は実装予定です');
   };
 
   return (
@@ -194,6 +323,13 @@ const WorkerListPage: React.FC = () => {
           </button>
         </div>
 
+        {/* エラー表示 */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
         <div className="bg-white rounded-md shadow-sm p-4">
           <div className="flex flex-wrap gap-4 items-end mb-4">
             <button
@@ -221,84 +357,90 @@ const WorkerListPage: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-300">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-700 w-10">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-gray-300" 
-                      checked={isAllChecked}
-                      ref={(input) => {
-                        if (input) input.indeterminate = isIndeterminate;
-                      }}
-                      onChange={handleHeaderCheckboxChange}
-                    />
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    作業者名
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    着手中作業
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    予定作業
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    次回来社日
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    最終作業日時
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    スキル
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    グループ
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {workerMasterData.map((worker) => (
-                  <tr
-                    key={worker.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => worker.name && navigate(`/admin/worker-detail/${encodeURIComponent(worker.name)}`)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <input
-                        type="checkbox"
-                        checked={checkedItems.has(worker.id)}
-                        onChange={() => handleRowCheckboxChange(worker.id)}
-                        className="rounded border-gray-300"
-                        onClick={(e) => e.stopPropagation()}
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-gray-500">読み込み中...</div>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-300">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-700 w-10">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-gray-300" 
+                        checked={isAllChecked}
+                        ref={(input) => {
+                          if (input) input.indeterminate = isIndeterminate;
+                        }}
+                        onChange={handleHeaderCheckboxChange}
                       />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {worker.id} / {worker.name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      -
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      -
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      -
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      -
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      -
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      -
-                    </td>
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      作業者名
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      着手中作業
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      予定作業
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      次回来社日
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      最終作業日時
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      スキル
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      グループ
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {workers.map((worker) => (
+                    <tr
+                      key={worker.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => worker.name && navigate(`/admin/worker-detail/${encodeURIComponent(worker.name)}`)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <input
+                          type="checkbox"
+                          checked={checkedItems.has(worker.id.toString())}
+                          onChange={() => handleRowCheckboxChange(worker.id.toString())}
+                          className="rounded border-gray-300"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        #{worker.id} / {worker.name || '名前未設定'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {worker.inProgressWork || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {worker.plannedWork || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {worker.nextVisitDate ? formatDate(worker.nextVisitDate) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {worker.lastWorkDate || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {worker.skill || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {worker.groupName || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
@@ -323,111 +465,11 @@ const WorkerListPage: React.FC = () => {
       />
 
       {/* 作業者作成モーダル */}
-      {showWorkerModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                <UserPlus className="w-5 h-5 mr-2" />
-                作業者作成
-              </h2>
-              <button
-                onClick={handleCloseWorkerModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <form onSubmit={handleWorkerSubmit} className="p-6">
-              {/* 作業者氏名 */}
-              <div className="mb-4">
-                <label htmlFor="workerName" className="block text-sm font-medium text-gray-700 mb-2">
-                  作業者氏名 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="workerName"
-                  value={workerFormData.name}
-                  onChange={(e) => handleWorkerFormChange('name', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="作業者氏名を入力してください"
-                  required
-                />
-              </div>
-
-              {/* メールアドレス */}
-              <div className="mb-4">
-                <label htmlFor="workerEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  メールアドレス <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="workerEmail"
-                  value={workerFormData.email}
-                  onChange={(e) => handleWorkerFormChange('email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="example@example.com"
-                  required
-                />
-              </div>
-
-              {/* スキル */}
-              <div className="mb-4">
-                <label htmlFor="workerSkills" className="block text-sm font-medium text-gray-700 mb-2">
-                  スキル
-                </label>
-                <textarea
-                  id="workerSkills"
-                  value={workerFormData.skills}
-                  onChange={(e) => handleWorkerFormChange('skills', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="スキルについて入力してください"
-                />
-              </div>
-
-              {/* グループ */}
-              <div className="mb-6">
-                <label htmlFor="workerGroup" className="block text-sm font-medium text-gray-700 mb-2">
-                  グループ <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="workerGroup"
-                  value={workerFormData.group}
-                  onChange={(e) => handleWorkerFormChange('group', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">グループを選択してください</option>
-                  <option value="グループAA">グループAA</option>
-                  <option value="グループBA">グループBA</option>
-                  <option value="グループ3B">グループ3B</option>
-                </select>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={handleCloseWorkerModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                >
-                  作成
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <WorkerCreateModal
+        isOpen={showWorkerModal}
+        onClose={handleCloseWorkerModal}
+        onSave={handleWorkerSave}
+      />
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社

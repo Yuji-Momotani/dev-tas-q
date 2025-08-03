@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../../utils/supabase';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
 
   const validateEmail = (email: string): boolean => {
@@ -13,27 +15,70 @@ const LoginPage: React.FC = () => {
     return re.test(email);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newErrors: { email?: string; password?: string } = {};
-    
+    setError('');
+
+    // バリデーション
     if (!email) {
-      newErrors.email = 'メールアドレスを入力してください';
-    } else if (!validateEmail(email)) {
-      newErrors.email = '有効なメールアドレスを入力してください';
+      setError('メールアドレスを入力してください');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setError('有効なメールアドレスを入力してください');
+      return;
     }
     
     if (!password) {
-      newErrors.password = 'パスワードを入力してください';
+      setError('パスワードを入力してください');
+      return;
     }
-    
-    setErrors(newErrors);
-    
-    if (Object.keys(newErrors).length === 0) {
-      // Proceed with navigation since validation passed
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError('ログインに失敗しました。メールアドレスまたはパスワードを確認してください。');
+        return;
+      }
+
+      if (!data.user) {
+        setError('ログインに失敗しました。');
+        return;
+      }
+
+      // 管理者権限チェック：adminsテーブルにレコードが存在するか確認
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('auth_user_id', data.user.id)
+        .is('deleted_at', null)
+        .single();
+
+      if (adminError || !adminData) {
+        // 管理者権限がない場合、セッションを破棄してログアウト
+        await supabase.auth.signOut();
+        setError('ログインに失敗しました。メールアドレスまたはパスワードを確認してください。');
+        return;
+      }
+
+      // 管理者権限確認後、ログイン成功
       navigate('/admin/work-list');
+    } catch (err) {
+      setError('ログイン中にエラーが発生しました');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    navigate('/admin/password-reset');
   };
 
   return (
@@ -50,6 +95,12 @@ const LoginPage: React.FC = () => {
       <div className="max-w-md mx-auto bg-white p-8 mt-8 rounded-md shadow-sm">
         <h2 className="text-xl font-medium text-center mb-6">サービス名 ログイン</h2>
         
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+        
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -60,12 +111,10 @@ const LoginPage: React.FC = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full px-3 py-2 border ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
-              } rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="○○○@XXXX.com"
+              required
             />
-            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
           </div>
           
           <div>
@@ -77,14 +126,10 @@ const LoginPage: React.FC = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full px-3 py-2 border ${
-                errors.password ? 'border-red-500' : 'border-gray-300'
-              } rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="password"
+              required
             />
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-            )}
           </div>
           
           <div className="flex items-center">
@@ -102,14 +147,23 @@ const LoginPage: React.FC = () => {
           
           <button
             type="submit"
-            className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-150"
+            disabled={loading}
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ログイン
+            {loading ? 'ログイン中...' : 'ログイン'}
           </button>
         </form>
         
-        <div className="mt-6 text-center text-xs text-gray-600">
-          <a href="#" className="underline">ログインID / パスワードを忘れた方</a>
+        <div className="mt-6 text-center text-xs text-gray-600 space-y-2">
+          <div>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="underline hover:text-gray-800"
+            >
+              ログインID / パスワードを忘れた方
+            </button>
+          </div>
         </div>
         
         <div className="mt-8 text-right text-xs text-gray-500">

@@ -24,4 +24,4 @@ npm run dev
 - 管理者のログイン画面
 	- `/admin/login`
 - 作業者のログイン画面
-	- `/user/login`
+	- `/worker/login`
