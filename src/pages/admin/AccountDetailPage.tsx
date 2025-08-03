@@ -1,11 +1,86 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockAccountDetails } from '../../data/mockData';
+import { supabase } from '../../utils/supabase';
+import type { Database } from '../../types/database.types';
+
+type Admin = Database['public']['Tables']['admins']['Row'];
+type AdminRole = Database['public']['Tables']['admin_roles']['Row'];
+type AdminNotification = Database['public']['Tables']['admin_notifications']['Row'];
+
+type AdminWithRole = Admin & {
+  admin_roles?: AdminRole;
+  admin_notifications?: AdminNotification[];
+};
 
 const AccountDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const accountDetail = id ? mockAccountDetails[id] : null;
+  const [admin, setAdmin] = useState<AdminWithRole | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [permissions, setPermissions] = useState({
+    allowWorkingGet: false,
+    allowWorkingCreate: false,
+    allowWorkingUpdate: false,
+    allowWorkingDelete: false,
+  });
+
+  useEffect(() => {
+    if (id) {
+      fetchAdminDetail();
+    }
+  }, [id]);
+
+  const fetchAdminDetail = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const { data, error } = await supabase
+        .from('admins')
+        .select(`
+          *,
+          admin_roles (*),
+          admin_notifications (*)
+        `)
+        .eq('id', id)
+        .is('deleted_at', null)
+        .single();
+
+      if (error) {
+        console.error('管理者詳細取得エラー:', error);
+        setError('管理者情報の取得に失敗しました');
+        return;
+      }
+
+      if (!data) {
+        setError('管理者が見つかりませんでした');
+        return;
+      }
+
+      // admin_rolesは配列で返ってくるので、最初の要素を取得
+      const adminWithRole: AdminWithRole = {
+        ...data,
+        admin_roles: data.admin_roles?.[0] || undefined,
+        admin_notifications: data.admin_notifications || []
+      };
+
+      setAdmin(adminWithRole);
+      
+      // 権限設定をstateに設定
+      setPermissions({
+        allowWorkingGet: adminWithRole.admin_roles?.allow_working_get || false,
+        allowWorkingCreate: adminWithRole.admin_roles?.allow_working_create || false,
+        allowWorkingUpdate: adminWithRole.admin_roles?.allow_working_update || false,
+        allowWorkingDelete: adminWithRole.admin_roles?.allow_working_delete || false,
+      });
+    } catch (err) {
+      console.error('管理者詳細取得処理エラー:', err);
+      setError('管理者情報の取得中にエラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     navigate('/admin/login');
@@ -23,7 +98,51 @@ const AccountDetailPage: React.FC = () => {
     navigate('/admin/work-videos');
   };
 
-  if (!accountDetail) {
+  const handleEmailChange = () => {
+    navigate(`/admin/email-change/${id}`);
+  };
+
+  const handlePermissionChange = (permission: keyof typeof permissions, checked: boolean) => {
+    setPermissions(prev => ({
+      ...prev,
+      [permission]: checked
+    }));
+  };
+
+  const updatePermissions = async () => {
+    if (!admin?.admin_roles?.id) {
+      console.error('admin_roles IDが見つかりません');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('admin_roles')
+        .update({
+          allow_working_get: permissions.allowWorkingGet,
+          allow_working_create: permissions.allowWorkingCreate,
+          allow_working_update: permissions.allowWorkingUpdate,
+          allow_working_delete: permissions.allowWorkingDelete,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', admin.admin_roles.id);
+
+      if (error) {
+        console.error('権限更新エラー:', error);
+        alert('権限の更新に失敗しました');
+        return;
+      }
+
+      alert('権限が正常に更新されました');
+      // データを再取得して最新状態に更新
+      fetchAdminDetail();
+    } catch (err) {
+      console.error('権限更新処理エラー:', err);
+      alert('権限の更新中にエラーが発生しました');
+    }
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-100">
         <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
@@ -49,7 +168,39 @@ const AccountDetailPage: React.FC = () => {
           </div>
         </header>
         <div className="p-8 text-center">
-          <p>アカウントが見つかりませんでした。</p>
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !admin) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="bg-white rounded-md p-2">
+              <span className="text-gray-600 text-sm">⋮⋮⋮</span>
+            </div>
+            <h1 className="text-lg font-medium">アカウント詳細</h1>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleWorkList}
+              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
+            >
+              作業状況一覧
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
+            >
+              ログアウト
+            </button>
+          </div>
+        </header>
+        <div className="p-8 text-center">
+          <p>{error || 'アカウントが見つかりませんでした。'}</p>
         </div>
       </div>
     );
@@ -98,7 +249,7 @@ const AccountDetailPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-md shadow-sm p-6">
-          <h2 className="text-xl font-medium mb-6">{accountDetail.name}</h2>
+          <h2 className="text-xl font-medium mb-6">{admin.name}</h2>
 
           <div className="space-y-8">
             {/* ログイン情報 */}
@@ -109,27 +260,18 @@ const AccountDetailPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 w-24">メール</label>
                   <input
                     type="email"
-                    value={accountDetail.email}
-                    readOnly
-                    className="ml-4 flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <label className="block text-sm font-medium text-gray-700 w-24">パスワード</label>
-                  <input
-                    type="password"
-                    value="********"
+                    value={admin.email || ''}
                     readOnly
                     className="ml-4 flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50"
                   />
                 </div>
               </div>
               <div className="mt-4 flex justify-end space-x-2">
-                <button className="px-4 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">
-                  キャンセル
-                </button>
-                <button className="px-4 py-1 bg-black text-white rounded text-sm hover:bg-gray-800">
-                  更新
+                <button 
+                  onClick={handleEmailChange}
+                  className="px-4 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                >
+                  メールアドレスを変更
                 </button>
               </div>
             </div>
@@ -153,57 +295,42 @@ const AccountDetailPage: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">作業状況一覧</td>
                       <td className="px-4 py-3 text-center border-r border-gray-300">
                         <div className="flex items-center justify-center">
-                          <div className={`w-4 h-4 rounded-full border-2 ${accountDetail.permissions.view ? 'bg-black border-black' : 'border-gray-400'}`}>
-                            {accountDetail.permissions.view && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
-                          </div>
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowWorkingGet}
+                            onChange={(e) => handlePermissionChange('allowWorkingGet', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center border-r border-gray-300">
                         <div className="flex items-center justify-center">
-                          <div className={`w-4 h-4 rounded-full border-2 ${accountDetail.permissions.register ? 'bg-black border-black' : 'border-gray-400'}`}>
-                            {accountDetail.permissions.register && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
-                          </div>
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowWorkingCreate}
+                            onChange={(e) => handlePermissionChange('allowWorkingCreate', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center border-r border-gray-300">
                         <div className="flex items-center justify-center">
-                          <div className={`w-4 h-4 rounded-full border-2 ${accountDetail.permissions.update ? 'bg-black border-black' : 'border-gray-400'}`}>
-                            {accountDetail.permissions.update && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
-                          </div>
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowWorkingUpdate}
+                            onChange={(e) => handlePermissionChange('allowWorkingUpdate', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center">
-                          <div className={`w-4 h-4 rounded-full border-2 ${accountDetail.permissions.delete ? 'bg-black border-black' : 'border-gray-400'}`}>
-                            {accountDetail.permissions.delete && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr className="border-t border-gray-300">
-                      <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">・・・</td>
-                      <td className="px-4 py-3 text-center border-r border-gray-300">
-                        <div className="flex items-center justify-center">
-                          <div className="w-4 h-4 rounded-full border-2 bg-black border-black">
-                            <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center border-r border-gray-300">
-                        <div className="flex items-center justify-center">
-                          <div className="w-4 h-4 rounded-full border-2 bg-black border-black">
-                            <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center border-r border-gray-300">
-                        <div className="flex items-center justify-center">
-                          <div className="w-4 h-4 rounded-full border-2 border-gray-400"></div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center">
-                          <div className="w-4 h-4 rounded-full border-2 border-gray-400"></div>
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowWorkingDelete}
+                            onChange={(e) => handlePermissionChange('allowWorkingDelete', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
                         </div>
                       </td>
                     </tr>
@@ -211,84 +338,25 @@ const AccountDetailPage: React.FC = () => {
                 </table>
               </div>
               <div className="mt-4 flex justify-end space-x-2">
-                <button className="px-4 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">
+                <button 
+                  onClick={() => {
+                    // 元の権限設定に戻す
+                    setPermissions({
+                      allowWorkingGet: admin?.admin_roles?.allow_working_get || false,
+                      allowWorkingCreate: admin?.admin_roles?.allow_working_create || false,
+                      allowWorkingUpdate: admin?.admin_roles?.allow_working_update || false,
+                      allowWorkingDelete: admin?.admin_roles?.allow_working_delete || false,
+                    });
+                  }}
+                  className="px-4 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                >
                   キャンセル
                 </button>
-                <button className="px-4 py-1 bg-black text-white rounded text-sm hover:bg-gray-800">
-                  更新
-                </button>
-              </div>
-            </div>
-
-            {/* 通知設定 */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">通知設定</h3>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <label className="block text-sm font-medium text-gray-700 w-24">メール</label>
-                  <input
-                    type="email"
-                    value={accountDetail.notifications.email}
-                    readOnly
-                    className="ml-4 flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <label className="block text-sm font-medium text-gray-700 w-24">LINE</label>
-                  <input
-                    type="text"
-                    value={accountDetail.notifications.line}
-                    readOnly
-                    className="ml-4 flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <label className="block text-sm font-medium text-gray-700 w-24">Chatwork</label>
-                  <input
-                    type="text"
-                    value={accountDetail.notifications.chatwork}
-                    readOnly
-                    className="ml-4 flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center">
-                  <label className="text-sm text-gray-700 w-24">作業者登録</label>
-                  <input
-                    type="checkbox"
-                    checked={accountDetail.notificationSettings.workRegistration}
-                    readOnly
-                    className="ml-4 h-4 w-4 text-blue-600 rounded border-gray-300 "
-                  />
-                </div>
-                <div className="flex items-center">
-                  <label className="text-sm text-gray-700 w-24">作業開始</label>
-                  <input
-                    type="checkbox"
-                    checked={accountDetail.notificationSettings.workStart}
-                    readOnly
-                    className="ml-4 h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <label className="text-sm text-gray-700 w-24">作業終了</label>
-                  <input
-                    type="checkbox"
-                    checked={accountDetail.notificationSettings.workComplete}
-                    readOnly
-                    className="ml-4 h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 flex justify-end space-x-2">
-                <button className="px-4 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">
-                  キャンセル
-                </button>
-                <button className="px-4 py-1 bg-black text-white rounded text-sm hover:bg-gray-800">
-                  更新
+                <button 
+                  onClick={updatePermissions}
+                  className="px-4 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                >
+                  権限を更新
                 </button>
               </div>
             </div>

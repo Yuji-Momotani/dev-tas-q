@@ -1,17 +1,161 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
-import { mockWorkItems, workerMasterData } from '../../data/mockData';
 import { WorkItem } from '../../types/admin';
-import { Download, Printer } from 'lucide-react';
+import { Download, Printer, Trash2 } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 import { QRCodeCanvas } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
+import { supabase } from '../../utils/supabase';
+import type { Database } from '../../types/database.types';
+import { WorkStatus } from '../../constants/workStatus';
+
+// Supabaseのworks型を拡張してWorkItem型に対応
+type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
+  workers?: {
+    name: string | null;
+  } | null;
+};
 
 const WorkListPage: React.FC = () => {
   const navigate = useNavigate();
   
+  // 状態管理
+  const [workItems, setWorkItems] = useState<WorkItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<WorkItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [freewordQuery, setFreewordQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedWorker, setSelectedWorker] = useState('');
+  const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
+
+  // モーダル状態
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const checkAuthentication = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        navigate('/admin/login');
+        return;
+      }
+      // 認証確認後、データを取得
+      fetchWorks();
+      fetchWorkers();
+    } catch (err) {
+      console.error('認証チェックエラー:', err);
+      navigate('/admin/login');
+    }
+  }, [navigate]);
+
+  // 認証チェックとデータ取得
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
+
+  const fetchWorks = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const { data, error } = await supabase
+        .from('works')
+        .select(`
+          *,
+          workers (
+            name
+          )
+        `)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        // JWT期限切れまたは認証エラーの詳細チェック
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          console.log('JWT期限切れまたは認証エラーを検知:', error.message);
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      // Supabaseのデータ構造をWorkItem型に変換
+      const convertedItems: WorkItem[] = (data as WorkWithWorker[]).map((work) => ({
+        id: `#${work.id}`,
+        name: work.work_title || '未設定',
+        status: getStatusFromNumber(work.status),
+        assignee: work.workers?.name || null,
+        quantity: work.quantity || undefined,
+        unitPrice: work.unit_price || undefined,
+        totalCost: (work.quantity && work.unit_price) ? work.quantity * work.unit_price : undefined,
+        deliveryDate: work.delivery_date ? formatDate(work.delivery_date) : undefined,
+      }));
+
+      setWorkItems(convertedItems);
+      setFilteredItems(convertedItems);
+    } catch (err) {
+      console.error('データ取得エラー:', err);
+      setError('作業データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWorkers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workers')
+        .select('id, name')
+        .is('deleted_at', null);
+
+      if (error) {
+        // JWT期限切れまたは認証エラーの詳細チェック
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          console.log('作業者取得時にJWT期限切れを検知:', error.message);
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      setWorkers(data || []);
+    } catch (err) {
+      console.error('作業者データ取得エラー:', err);
+    }
+  };
+
+  // ステータス番号をWorkStatusBadgeが期待する文字列に変換
+  const getStatusFromNumber = (status: number | null): 'progress' | 'completed' | 'planned' | 'none' => {
+    switch (status) {
+      case WorkStatus.NO_PLAN: return 'none';
+      case WorkStatus.PLANNED: return 'planned';
+      case WorkStatus.IN_PROGRESS: return 'progress';
+      case WorkStatus.COMPLETED: return 'completed';
+      default: return 'none';
+    }
+  };
+
+  // 日付フォーマット
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\//g, '.');
+  };
+
   const handleAccountManagement = () => {
     navigate('/admin/account-management');
   };
@@ -19,15 +163,6 @@ const WorkListPage: React.FC = () => {
   const handleWorkVideos = () => {
     navigate('/admin/work-videos');
   };
-  const [workItems, setWorkItems] = useState<WorkItem[]>(mockWorkItems);
-  const [filteredItems, setFilteredItems] = useState<WorkItem[]>(mockWorkItems);
-  const [freewordQuery, setFreewordQuery] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedWorker, setSelectedWorker] = useState('');
-
-  // モーダル状態
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // 検索フィルターを適用する関数
   const applyFilters = () => {
@@ -96,8 +231,15 @@ const WorkListPage: React.FC = () => {
     navigate(`/admin/work-detail/${encodeURIComponent(cleanId)}`);
   };
 
-  const handleLogout = () => {
-    navigate('/admin/login');
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/admin/login');
+    } catch (err) {
+      console.error('ログアウトエラー:', err);
+      // エラーが発生してもログイン画面に遷移
+      navigate('/admin/login');
+    }
   };
 
   const handleOpenAddModal = () => {
@@ -108,25 +250,50 @@ const WorkListPage: React.FC = () => {
     setIsAddModalOpen(false);
   };
 
-  const handleSaveWork = (newWorkData: Omit<WorkItem, 'id'>) => {
-    // 新しいIDを生成（実際のアプリケーションではサーバーサイドで生成）
-    const newId = `#${Math.floor(Math.random() * 900000) + 100000}`;
-    
-    const newWorkItem: WorkItem = {
-      id: newId,
-      ...newWorkData
-    };
-
-    // モックデータに追加
-    const updatedItems = [...workItems, newWorkItem];
-    setWorkItems(updatedItems);
-    setFilteredItems(updatedItems);
-    
-    alert('作業が追加されました。');
+  const handleSaveWork = () => {
+    // 作業追加後にデータを再取得
+    fetchWorks();
   };
 
   const handleExportCSV = () => {
     exportWorkListCSV(filteredItems);
+  };
+
+  const handleDelete = async (workItem: WorkItem) => {
+    const workIdNumber = workItem.id.replace('#', '');
+    
+    if (!confirm(`作業「${workItem.name}」を削除しますか？`)) return;
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('works')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', workIdNumber)
+        .is('deleted_at', null);
+
+      if (error) {
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      alert('作業が削除されました。');
+      // データを再取得
+      fetchWorks();
+    } catch (err) {
+      console.error('作業削除エラー:', err);
+      alert('作業の削除に失敗しました。');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePrint = (workItem: WorkItem) => {
@@ -238,6 +405,13 @@ const WorkListPage: React.FC = () => {
       </header>
       
       <div className="p-4">
+        {/* エラー表示 */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
         {/* Navigation buttons */}
         <div className="mb-4 flex space-x-2">
           <button 
@@ -307,9 +481,9 @@ const WorkListPage: React.FC = () => {
                 className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
               >
                 <option value="">全て</option>
-                {workerMasterData.map((worker) => (
-                  <option key={worker.id} value={worker.name}>
-                    {worker.name}
+                {workers.map((worker) => (
+                  <option key={worker.id} value={worker.name || ''}>
+                    {worker.name || '名前未設定'}
                   </option>
                 ))}
               </select>
@@ -326,7 +500,12 @@ const WorkListPage: React.FC = () => {
           
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse border border-gray-300">
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-gray-500">読み込み中...</div>
+              </div>
+            ) : (
+              <table className="min-w-full border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-100">
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-20">
@@ -352,6 +531,9 @@ const WorkListPage: React.FC = () => {
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     納品予定日
+                  </th>
+                  <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-20">
+                    削除
                   </th>
                 </tr>
               </thead>
@@ -405,10 +587,23 @@ const WorkListPage: React.FC = () => {
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.deliveryDate || '-'}
                     </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(item);
+                        }}
+                        className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="削除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
       </div>

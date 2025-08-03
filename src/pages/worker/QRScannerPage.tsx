@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
 import QrScanner from 'qr-scanner';
+import { supabase } from '../../utils/supabase';
 
 const QRScannerPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,12 +14,16 @@ const QRScannerPage: React.FC = () => {
   const [isWaitingForQR, setIsWaitingForQR] = useState(false);
   const [detectedQR, setDetectedQR] = useState<string | null>(null);
   const [showLinkButton, setShowLinkButton] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [currentWorkerId, setCurrentWorkerId] = useState<number | null>(null);
 
   useEffect(() => {
     const initializeScanner = async () => {
       // 二重初期化を防ぐ
       if (isInitializingRef.current) return;
       
+      // 作業者情報を取得
+      await fetchWorkerInfo();
       await startQRScanner();
     };
     
@@ -27,6 +32,35 @@ const QRScannerPage: React.FC = () => {
       stopQRScanner();
     };
   }, []);
+
+  // 作業者情報を取得
+  const fetchWorkerInfo = async () => {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        navigate('/worker/login');
+        return;
+      }
+
+      const { data: workerData, error: workerError } = await supabase
+        .from('workers')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .is('deleted_at', null)
+        .single();
+
+      if (workerError || !workerData) {
+        setError('作業者情報が見つかりません');
+        return;
+      }
+
+      setCurrentWorkerId(workerData.id);
+    } catch (err) {
+      console.error('作業者情報取得エラー:', err);
+      setError('作業者情報の取得に失敗しました');
+    }
+  };
 
   const startQRScanner = async () => {
     // 二重初期化を防ぐ
@@ -120,14 +154,15 @@ const QRScannerPage: React.FC = () => {
     setIsWaitingForQR(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     stopQRScanner();
-    navigate('/user/login');
+    await supabase.auth.signOut();
+    navigate('/worker/login');
   };
 
   const handleBack = () => {
     stopQRScanner();
-    navigate('/user/work');
+    navigate('/worker/work');
   };
 
   // QRコード読み取り成功時の処理
@@ -135,8 +170,24 @@ const QRScannerPage: React.FC = () => {
     console.log('QRコード読み取り成功:', qrData);
     console.log('QRコードの内容をデバッグ出力:', JSON.stringify(qrData));
     
+    // QRコードから作業IDを抽出
+    // 期待される形式: "workerid:1,workid:#123" または "workerid:1,workid:123"
+    const workIdMatch = qrData.match(/workid:(?:#)?([0-9]+)/i);
+    
+    if (!workIdMatch || !workIdMatch[1]) {
+      setError('無効なQRコードです');
+      // スキャナーを再開
+      setTimeout(() => {
+        if (qrScannerRef.current) {
+          qrScannerRef.current.start();
+        }
+        setError('');
+      }, 3000);
+      return;
+    }
+    
     // 検出されたQRコードを保存し、リンクボタンを表示
-    setDetectedQR(qrData);
+    setDetectedQR(workIdMatch[1]);
     setShowLinkButton(true);
     setIsWaitingForQR(false);
     
@@ -147,22 +198,67 @@ const QRScannerPage: React.FC = () => {
   };
 
   // リンクボタンクリック時の処理
-  const handleLinkClick = () => {
-    if (!detectedQR) return;
+  const handleLinkClick = async () => {
+    if (!detectedQR || !currentWorkerId) return;
 
-    // モックデータを設定
-    const mockData = {
-      company: '株式会社 音光堂',
-      task: 'Aハンダ作業開始',
-      qrCode: detectedQR,
-      timestamp: new Date().toISOString()
-    };
-    
-    // QRコード読み取り結果をsessionStorageに保存
-    sessionStorage.setItem('qrResult', JSON.stringify(mockData));
-    
-    // 作業画面に遷移
-    handleBack();
+    try {
+      setLoading(true);
+      setError('');
+
+      const workId = parseInt(detectedQR, 10);
+      
+      // 作業が存在するか確認
+      const { data: workData, error: checkError } = await supabase
+        .from('works')
+        .select('id, status, worker_id')
+        .eq('id', workId)
+        .is('deleted_at', null)
+        .single();
+
+      if (checkError || !workData) {
+        setError('作業情報が見つかりません');
+        return;
+      }
+
+      // ステータスチェック
+      if (workData.status === 4) {
+        setError('この作業は既に完了しています');
+        return;
+      }
+
+      if (workData.status === 3 && workData.worker_id !== currentWorkerId) {
+        setError('この作業は他の作業者が着手中です');
+        return;
+      }
+
+      // 作業を着手中（status=3）に更新し、作業者をアサイン
+      const { error: updateError } = await supabase
+        .from('works')
+        .update({ 
+          status: 3,
+          worker_id: currentWorkerId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workId);
+
+      if (updateError) {
+        console.error('作業ステータス更新エラー:', updateError);
+        setError('作業の開始に失敗しました');
+        return;
+      }
+
+      // 成功メッセージ表示
+      alert('作業を開始しました');
+      
+      // 作業画面に遷移
+      navigate('/worker/work');
+      
+    } catch (err) {
+      console.error('作業開始エラー:', err);
+      setError('処理中にエラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -189,7 +285,7 @@ const QRScannerPage: React.FC = () => {
 
       {/* Camera View */}
       <div className="relative h-full flex items-center justify-center">
-        {error ? (
+        {error && !isScanning ? (
           <div className="text-center p-8">
             <p className="text-white text-lg mb-4">{error}</p>
           </div>
@@ -241,11 +337,19 @@ const QRScannerPage: React.FC = () => {
                   <div className="absolute top-full mt-16 left-1/2 transform -translate-x-1/2">
                     <button
                       onClick={handleLinkClick}
-                      className="bg-yellow-400 text-black px-6 py-3 rounded-full font-medium text-sm shadow-lg hover:bg-yellow-300 transition-colors flex items-center space-x-2"
+                      disabled={loading}
+                      className="bg-yellow-400 text-black px-6 py-3 rounded-full font-medium text-sm shadow-lg hover:bg-yellow-300 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span>🔗</span>
-                      <span>作業を開始</span>
+                      <span>{loading ? '処理中...' : '作業を開始'}</span>
                     </button>
+                  </div>
+                )}
+
+                {/* エラーメッセージ */}
+                {error && isScanning && (
+                  <div className="absolute top-full mt-20 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg max-w-xs text-center">
+                    {error}
                   </div>
                 )}
 
@@ -275,7 +379,7 @@ const QRScannerPage: React.FC = () => {
           </button>
           {!showLinkButton && (
             <button
-              onClick={() => handleQRDetected('TEST_QR_CODE_' + Date.now())}
+              onClick={() => handleQRDetected('workerid:1,workid:#1')}
               className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               テストスキャン

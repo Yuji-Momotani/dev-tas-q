@@ -1,6 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut, Edit, Save, X, User, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../utils/supabase';
+import { Tables } from '../../types/database.types';
+
+type WorkerType = Tables<'workers'> & {
+  groups?: {
+    name: string | null;
+  } | null;
+  worker_skills?: Array<{
+    comment: string | null;
+    m_rank?: {
+      rank: string | null;
+    } | null;
+  }>;
+};
+
+type WorkType = Tables<'works'>;
 
 interface UserProfile {
   name: string;
@@ -15,40 +31,134 @@ interface UserProfile {
   workHistory: Array<{
     id: string;
     name: string;
-    status: 'progress' | 'completed' | 'planned';
+    status: number;
   }>;
 }
 
-const UserMyPage: React.FC = () => {
+const WorkerMyPage: React.FC = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [saving, setSaving] = useState(false);
+  const [workerId, setWorkerId] = useState<number | null>(null);
   
-  // モックデータ
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: '山田太郎',
-    birthDate: '1971.2.16',
-    address: '広島県福山市西町...',
-    nextVisitDate: '2025.6.18',
-    email: '○○○@XXXX.com',
+  // デフォルト値
+  const defaultProfile: UserProfile = {
+    name: '未設定',
+    birthDate: '',
+    address: '未設定',
+    nextVisitDate: '',
+    email: '未設定',
     password: '********',
-    profileImage: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    group: 'A',
-    skills: 'スキルについての詳細が入ります。スキルについての詳細が入ります。',
-    workHistory: [
-      { id: '#123456', name: 'ハンダ', status: 'progress' },
-      { id: '#234567', name: 'B組み立て', status: 'completed' },
-      { id: '#345678', name: 'C検査', status: 'planned' }
-    ]
-  });
+    profileImage: '',
+    group: '未設定',
+    skills: 'スキル情報が登録されていません',
+    workHistory: []
+  };
 
-  const [editedProfile, setEditedProfile] = useState<UserProfile>({ ...userProfile });
+  const [userProfile, setUserProfile] = useState<UserProfile>(defaultProfile);
+  const [editedProfile, setEditedProfile] = useState<UserProfile>(defaultProfile);
 
-  const handleLogout = () => {
-    navigate('/user/login');
+  // 作業者情報と作業履歴を取得
+  useEffect(() => {
+    const fetchWorkerData = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        // 現在のユーザーを取得
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          navigate('/worker/login');
+          return;
+        }
+
+        // 作業者情報を取得
+        const { data: workerData, error: workerError } = await supabase
+          .from('workers')
+          .select(`
+            *,
+            groups (
+              name
+            ),
+            worker_skills (
+              comment,
+              m_rank (
+                rank
+              )
+            )
+          `)
+          .eq('auth_user_id', user.id)
+          .is('deleted_at', null)
+          .single();
+
+        if (workerError || !workerData) {
+          setError('作業者情報が見つかりません');
+          return;
+        }
+
+        // 作業者IDを保存
+        setWorkerId(workerData.id);
+
+        // 作業履歴を取得
+        const { data: workHistory, error: workError } = await supabase
+          .from('works')
+          .select('id, work_title, status')
+          .eq('worker_id', workerData.id)
+          .is('deleted_at', null)
+          .order('updated_at', { ascending: false })
+          .limit(10);
+
+        if (workError) {
+          console.error('作業履歴取得エラー:', workError);
+        }
+
+        // プロフィールデータを整形
+        const typedWorker = workerData as WorkerType;
+        const skills = typedWorker.worker_skills?.map(skill => 
+          skill.m_rank?.rank ? `${skill.m_rank.rank}: ${skill.comment || ''}` : skill.comment || ''
+        ).join('\n') || 'スキル情報が登録されていません';
+
+        const profile: UserProfile = {
+          name: workerData.name || '未設定',
+          birthDate: workerData.birthday ? new Date(workerData.birthday).toLocaleDateString('ja-JP').replace(/\//g, '.') : '',
+          address: workerData.address || '未設定',
+          nextVisitDate: workerData.next_visit_date ? new Date(workerData.next_visit_date).toLocaleDateString('ja-JP').replace(/\//g, '.') : '',
+          email: workerData.email || user.email || '未設定',
+          password: '********',
+          profileImage: '',
+          group: typedWorker.groups?.name || '未設定',
+          skills: skills,
+          workHistory: (workHistory || []).map(work => ({
+            id: `#${work.id}`,
+            name: work.work_title || '未設定',
+            status: work.status || 0
+          }))
+        };
+
+        setUserProfile(profile);
+        setEditedProfile(profile);
+        
+      } catch (err) {
+        console.error('データ取得エラー:', err);
+        setError('データの取得中にエラーが発生しました');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorkerData();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/worker/login');
   };
 
   const handleBackToWork = () => {
-    navigate('/user/work');
+    navigate('/worker/work');
   };
 
   const handleEdit = () => {
@@ -61,10 +171,53 @@ const UserMyPage: React.FC = () => {
     setEditedProfile({ ...userProfile });
   };
 
-  const handleSave = () => {
-    setUserProfile({ ...editedProfile });
-    setIsEditing(false);
-    alert('プロフィールが更新されました。');
+  const handleSave = async () => {
+    if (!workerId) {
+      setError('作業者IDが見つかりません');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError('');
+
+      // 日付のフォーマットを変換（YYYY.MM.DD -> YYYY-MM-DD）
+      const formatDateForDB = (dateStr: string) => {
+        if (!dateStr) return null;
+        return dateStr.replace(/\./g, '-');
+      };
+
+      // 作業者情報を更新
+      const { error: updateError } = await supabase
+        .from('workers')
+        .update({
+          name: editedProfile.name,
+          birthday: formatDateForDB(editedProfile.birthDate),
+          address: editedProfile.address,
+          next_visit_date: formatDateForDB(editedProfile.nextVisitDate),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workerId);
+
+      if (updateError) {
+        console.error('作業者情報更新エラー:', updateError);
+        setError('プロフィールの更新に失敗しました');
+        return;
+      }
+
+      // スキル情報は現在の実装では更新しない（スキル編集には別途詳細な実装が必要）
+      
+      // 成功後の処理
+      setUserProfile({ ...editedProfile });
+      setIsEditing(false);
+      alert('プロフィールが更新されました。');
+      
+    } catch (err) {
+      console.error('プロフィール更新エラー:', err);
+      setError('プロフィールの更新中にエラーが発生しました');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleInputChange = (field: keyof UserProfile, value: string) => {
@@ -74,31 +227,46 @@ const UserMyPage: React.FC = () => {
     }));
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: number) => {
     switch (status) {
-      case 'progress':
+      case 3:
         return 'bg-red-500';
-      case 'completed':
+      case 4:
         return 'bg-green-500';
-      case 'planned':
+      case 2:
         return 'bg-yellow-500';
+      case 1:
+        return 'bg-gray-500';
       default:
         return 'bg-gray-500';
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: number) => {
     switch (status) {
-      case 'progress':
+      case 3:
         return '着手中';
-      case 'completed':
+      case 4:
         return '完了';
-      case 'planned':
+      case 2:
         return '予定';
+      case 1:
+        return '予定なし';
       default:
-        return '';
+        return '未設定';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -130,6 +298,13 @@ const UserMyPage: React.FC = () => {
           作業画面へ戻る
         </button>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           {/* Edit Button */}
@@ -153,10 +328,11 @@ const UserMyPage: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  disabled={saving}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
-                  <span>更新</span>
+                  <span>{saving ? '更新中...' : '更新'}</span>
                 </button>
               </div>
             )}
@@ -195,12 +371,12 @@ const UserMyPage: React.FC = () => {
                     {isEditing ? (
                       <input
                         type="date"
-                        value={editedProfile.birthDate.replace(/\./g, '-')}
+                        value={editedProfile.birthDate ? editedProfile.birthDate.replace(/\./g, '-') : ''}
                         onChange={(e) => handleInputChange('birthDate', e.target.value.replace(/-/g, '.'))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                     ) : (
-                      <span className="text-gray-900">{userProfile.birthDate}</span>
+                      <span className="text-gray-900">{userProfile.birthDate || '未設定'}</span>
                     )}
                   </div>
                 </div>
@@ -229,12 +405,12 @@ const UserMyPage: React.FC = () => {
                     {isEditing ? (
                       <input
                         type="date"
-                        value={editedProfile.nextVisitDate.replace(/\./g, '-')}
+                        value={editedProfile.nextVisitDate ? editedProfile.nextVisitDate.replace(/\./g, '-') : ''}
                         onChange={(e) => handleInputChange('nextVisitDate', e.target.value.replace(/-/g, '.'))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                     ) : (
-                      <span className="text-gray-900">{userProfile.nextVisitDate}</span>
+                      <span className="text-gray-900">{userProfile.nextVisitDate || '未設定'}</span>
                     )}
                   </div>
                 </div>
@@ -253,15 +429,9 @@ const UserMyPage: React.FC = () => {
               <div className="flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">メール</label>
                 <div className="ml-4 flex-1">
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      value={editedProfile.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  ) : (
-                    <span className="text-gray-900">{userProfile.email}</span>
+                  <span className="text-gray-900">{userProfile.email}</span>
+                  {isEditing && (
+                    <p className="text-xs text-gray-500 mt-1">※ メールアドレスは変更できません</p>
                   )}
                 </div>
               </div>
@@ -270,15 +440,9 @@ const UserMyPage: React.FC = () => {
               <div className="flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">パスワード</label>
                 <div className="ml-4 flex-1">
-                  {isEditing ? (
-                    <input
-                      type="password"
-                      value={editedProfile.password}
-                      onChange={(e) => handleInputChange('password', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  ) : (
-                    <span className="text-gray-900">{userProfile.password}</span>
+                  <span className="text-gray-900">{userProfile.password}</span>
+                  {isEditing && (
+                    <p className="text-xs text-gray-500 mt-1">※ パスワードは変更できません</p>
                   )}
                 </div>
               </div>
@@ -295,18 +459,9 @@ const UserMyPage: React.FC = () => {
                 </div>
                 <div className="text-center">
                   <label className="text-sm font-medium text-gray-700">グループ</label>
-                  {isEditing ? (
-                    <select
-                      value={editedProfile.group}
-                      onChange={(e) => handleInputChange('group', e.target.value)}
-                      className="block w-full mt-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="C">C</option>
-                    </select>
-                  ) : (
-                    <div className="mt-2 text-gray-900">{userProfile.group}</div>
+                  <div className="mt-2 text-gray-900">{userProfile.group}</div>
+                  {isEditing && (
+                    <p className="text-xs text-gray-500 mt-1">※ グループは管理者のみ変更可能です</p>
                   )}
                 </div>
               </div>
@@ -314,15 +469,9 @@ const UserMyPage: React.FC = () => {
               {/* Skills */}
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">スキル</h4>
-                {isEditing ? (
-                  <textarea
-                    value={editedProfile.skills}
-                    onChange={(e) => handleInputChange('skills', e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                ) : (
-                  <p className="text-sm text-gray-600 leading-relaxed">{userProfile.skills}</p>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{userProfile.skills}</p>
+                {isEditing && (
+                  <p className="text-xs text-gray-500 mt-2">※ スキルは管理者のみ変更可能です</p>
                 )}
               </div>
             </div>
@@ -385,4 +534,4 @@ const UserMyPage: React.FC = () => {
   );
 };
 
-export default UserMyPage;
+export default WorkerMyPage;
