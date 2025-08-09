@@ -46,7 +46,7 @@ export const exportWorkListCSV = (workItems: WorkItem[]): void => {
   };
 
   const rows = workItems.map(item => [
-    `${item.id} / ${item.name}`,
+    `#${item.id} / ${item.name}`,
     getStatusText(item.status),
     item.assignee || '-',
     item.quantity?.toString() || '-',

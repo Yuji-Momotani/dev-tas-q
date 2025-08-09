@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
 import { WorkItem } from '../../types/admin';
-import { Download, Printer, Trash2 } from 'lucide-react';
+import { Download, Printer, Trash2, Check } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 import { QRCodeCanvas } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
@@ -88,7 +88,7 @@ const WorkListPage: React.FC = () => {
 
       // Supabaseのデータ構造をWorkItem型に変換
       const convertedItems: WorkItem[] = (data as WorkWithWorker[]).map((work) => ({
-        id: `#${work.id}`,
+        id: work.id,
         name: work.work_title || '未設定',
         status: work.status || WorkStatus.REQUEST_PLANNED,
         assignee: work.workers?.name || null,
@@ -248,9 +248,52 @@ const WorkListPage: React.FC = () => {
     exportWorkListCSV(filteredItems);
   };
 
+  // 完了ボタンを表示する条件をチェック
+  const canComplete = (workItem: WorkItem): boolean => {
+    return workItem.status === WorkStatus.IN_DELIVERY || 
+           workItem.status === WorkStatus.PICKUP_REQUESTING || 
+           workItem.status === WorkStatus.WAITING_DROPOFF;
+  };
+
+  const handleComplete = async (workItem: WorkItem) => {
+    if (!confirm(`作業「${workItem.name}」を完了にしますか？`)) return;
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('works')
+        .update({ 
+          status: WorkStatus.COMPLETED,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workItem.id)
+        .is('deleted_at', null);
+
+      if (error) {
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      alert('作業が完了しました。');
+      // データを再取得
+      fetchWorks();
+    } catch (err) {
+      console.error('作業完了エラー:', err);
+      alert('作業の完了処理に失敗しました。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (workItem: WorkItem) => {
-    const workIdNumber = workItem.id.replace('#', '');
-    
     if (!confirm(`作業「${workItem.name}」を削除しますか？`)) return;
 
     try {
@@ -259,7 +302,7 @@ const WorkListPage: React.FC = () => {
       const { error } = await supabase
         .from('works')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', workIdNumber)
+        .eq('id', workItem.id)
         .is('deleted_at', null);
 
       if (error) {
@@ -348,7 +391,7 @@ const WorkListPage: React.FC = () => {
                 <div class="qr-container">
                   <h2>作業QRコード</h2>
                   <img src="${qrDataUrl}" alt="QRコード" class="qr-image" />
-                  <p>作業ID: ${workItem.id}</p>
+                  <p>作業ID: #${workItem.id}</p>
                 </div>
                 <script>
                   // 少し待ってから印刷プレビューを表示
@@ -522,6 +565,9 @@ const WorkListPage: React.FC = () => {
                     納品予定日
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-20">
+                    完了
+                  </th>
+                  <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-20">
                     削除
                   </th>
                 </tr>
@@ -546,9 +592,9 @@ const WorkListPage: React.FC = () => {
                     </td>
                     <td 
                       className="border border-gray-300 px-4 py-3 text-sm text-gray-900 cursor-pointer"
-                      onClick={() => handleRowClick(item.id)}
+                      onClick={() => handleRowClick(`#${item.id}`)}
                     >
-                      {item.id} / {item.name}
+                      #{item.id} / {item.name}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       <WorkStatusBadge status={item.status} />
@@ -575,6 +621,26 @@ const WorkListPage: React.FC = () => {
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.deliveryDate || '-'}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      {canComplete(item) ? (
+                        <div className="flex justify-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleComplete(item);
+                            }}
+                            className="relative w-16 h-8 bg-gray-200 rounded-full shadow-inner transition-all duration-300 hover:bg-green-500 group"
+                            title="完了"
+                          >
+                            <div className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 group-hover:translate-x-8 flex items-center justify-center">
+                              <Check size={12} className="text-gray-400 group-hover:text-green-600" />
+                            </div>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-center">
                       <button

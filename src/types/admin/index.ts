@@ -1,7 +1,7 @@
 import { WorkStatus } from '../../constants/workStatus';
 
 export interface WorkItem {
-  id: string;
+  id: number;
   name: string;
   status: WorkStatus;
   assignee?: string;
@@ -58,7 +58,7 @@ export interface WorkerDetail {
   group: string;
   skills: string;
   workHistory: Array<{
-    id: string;
+    id: number;
     name: string;
     status: WorkStatus;
     quantity?: number;

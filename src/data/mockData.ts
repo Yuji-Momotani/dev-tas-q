@@ -4,9 +4,9 @@ import { WorkStatus } from '../constants/workStatus';
 
 export const mockWorkItems: WorkItem[] = [
   {
-    id: '#123456',
+    id: 123456,
     name: 'ハンダ',
-    status: 'progress',
+    status: WorkStatus.IN_PROGRESS,
     assignee: '山田太郎',
     quantity: 40,
     unitPrice: 400,
@@ -14,9 +14,9 @@ export const mockWorkItems: WorkItem[] = [
     deliveryDate: '2025.05.09'
   },
   {
-    id: '#234567',
+    id: 234567,
     name: 'Bパッキング',
-    status: 'completed',
+    status: WorkStatus.COMPLETED,
     assignee: '佐藤陽子',
     quantity: 100,
     unitPrice: 600,
@@ -24,26 +24,26 @@ export const mockWorkItems: WorkItem[] = [
     deliveryDate: '2025.06.12'
   },
   {
-    id: '・・・/ C組み立て',
+    id: 345678,
     name: 'C組み立て',
-    status: 'none',
+    status: WorkStatus.REQUEST_PLANNED,
     quantity: 60,
     unitPrice: 720,
     totalCost: 43200,
   },
   {
-    id: '・・・/ ・・・',
-    name: '・・・',
-    status: 'planned',
+    id: 456789,
+    name: 'D作業',
+    status: WorkStatus.REQUESTING,
     assignee: '加藤清作',
     quantity: 0,
     unitPrice: 0,
     totalCost: 0,
   },
   {
-    id: '・・・/ ・・・2',
-    name: '・・・',
-    status: 'none',
+    id: 567890,
+    name: 'E作業',
+    status: WorkStatus.REQUEST_PLANNED,
     quantity: 0,
     unitPrice: 0,
     totalCost: 0,
@@ -120,7 +120,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
     skills: 'スキルについての詳細が入ります。スキルについての詳細が入ります。',
     workHistory: [
       { 
-        id: '#123456', 
+        id: 123456, 
         name: 'ハンダ', 
         status: WorkStatus.IN_PROGRESS,
         quantity: 40,
@@ -129,7 +129,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
         deliveryDate: '2025.05.09'
       },
       { 
-        id: '#789012', 
+        id: 789012, 
         name: 'C組み立て', 
         status: WorkStatus.REQUESTING,
         quantity: 25,
@@ -138,7 +138,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
         deliveryDate: '2025.06.15'
       },
       { 
-        id: '#345678', 
+        id: 345678, 
         name: 'Aパッキング', 
         status: WorkStatus.COMPLETED,
         quantity: 80,
@@ -162,7 +162,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
     skills: 'スキルについての詳細が入ります。',
     workHistory: [
       { 
-        id: '#234567', 
+        id: 234567, 
         name: 'Bパッキング', 
         status: WorkStatus.COMPLETED,
         quantity: 100,
@@ -171,7 +171,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
         deliveryDate: '2025.06.12'
       },
       { 
-        id: '#456789', 
+        id: 456789, 
         name: 'D検査', 
         status: WorkStatus.IN_PROGRESS,
         quantity: 50,
@@ -195,7 +195,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
     skills: '組み立て作業に特化したスキルを持っています。精密作業が得意です。',
     workHistory: [
       { 
-        id: '#567890', 
+        id: 567890, 
         name: 'E組み立て', 
         status: WorkStatus.REQUESTING,
         quantity: 30,
