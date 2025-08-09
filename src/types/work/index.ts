@@ -4,7 +4,7 @@ export interface Work {
   id: number;
   title: string;
   status: WorkStatus;
-  quantity: number;
+  quantity?: number;
   unitPrice: number;
   deliveryDate?: Date;
   workerID?: number;

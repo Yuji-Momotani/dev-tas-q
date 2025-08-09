@@ -1,8 +1,8 @@
-import { WorkItem } from '../types';
+import { Work } from '../types';
 import { Account, WorkVideo } from '../types';
 import { WorkStatus } from '../constants/workStatus';
 
-export const mockWorkItems: WorkItem[] = [
+export const mockWorks: Work[] = [
   {
     id: 123456,
     name: 'ハンダ',

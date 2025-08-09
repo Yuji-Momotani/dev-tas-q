@@ -18,7 +18,7 @@ const WorkDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [workItem, setWorkItem] = useState<WorkWithWorker | null>(null);
+  const [workItem, setWork] = useState<WorkWithWorker | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,7 +81,7 @@ const WorkDetailPage: React.FC = () => {
         return;
       }
 
-      setWorkItem(data as WorkWithWorker);
+      setWork(data as WorkWithWorker);
       setEditedItem({
         work_title: data.work_title || '',
         worker_id: data.worker_id,

@@ -8,6 +8,11 @@ export interface Worker {
   nextVisitDate?: Date;
   unitPrice?: number;
   groupID?: number;
+  lastWorkDate?: Date;
+  inProgressWork?: string;
+  plannedWork?: string;
+  skill?: string;
+  groupName?: string;
 }
 
 import { Group } from '../group';
