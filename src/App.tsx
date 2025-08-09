@@ -29,7 +29,7 @@ function App() {
         <Route path="/admin/account-management" element={<AccountManagementPage />} />
         <Route path="/admin/work-videos" element={<WorkVideoListPage />} />
         <Route path="/admin/account-detail/:id" element={<AccountDetailPage />} />
-        <Route path="/admin/worker-detail/:name" element={<WorkerDetailPage />} />
+        <Route path="/admin/worker-detail/:id" element={<WorkerDetailPage />} />
         <Route path="/admin/worker-list" element={<WorkerListPage />} />
         <Route path="/admin/email-change/:id" element={<EmailChangePage />} />
         <Route path="/admin/auth/callback" element={<AdminAuthCallbackPage />} />

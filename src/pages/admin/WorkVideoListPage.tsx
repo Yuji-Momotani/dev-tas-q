@@ -1,27 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Upload, X, Video } from 'lucide-react';
-import { mockWorkVideos } from '../../data/mockData';
+import { supabase } from '../../utils/supabase';
+import { WorkVideo } from '../../types/work';
+import type { Database } from '../../types/database.types';
 
-// 管理者リスト
-const adminList = [
-  { id: 'admin-001', name: 'マスター' },
-  { id: 'admin-002', name: '主任' },
-  { id: 'admin-003', name: '副主任' },
-  { id: 'admin-004', name: 'リーダー' }
-];
+// Supabaseのwork_videos型を拡張
+type WorkVideoWithRelations = Database['public']['Tables']['work_videos']['Row'] & {
+  works?: {
+    work_title: string | null;
+  } | null;
+  admins?: {
+    name: string | null;
+  } | null;
+};
 
 const WorkVideoListPage: React.FC = () => {
   const navigate = useNavigate();
+  const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [adminList, setAdminList] = useState<{ id: number; name: string }[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    creator: '',
+    creatorID: '',
     file: null as File | null
   });
 
-  const handleLogout = () => {
+  // 認証チェックとデータ取得
+  const checkAuthentication = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        navigate('/admin/login');
+        return;
+      }
+      // 認証確認後、データを取得
+      fetchWorkVideos();
+      fetchAdmins();
+    } catch (err) {
+      console.error('認証チェックエラー:', err);
+      navigate('/admin/login');
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
+
+  // 作業動画データを取得
+  const fetchWorkVideos = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('work_videos')
+        .select(`
+          id,
+          video_title,
+          video_url,
+          created_at,
+          created_admin_id,
+          work_id,
+          works (
+            work_title
+          ),
+          admins (
+            name
+          )
+        `)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // データをWorkVideo型に変換
+      const videos: WorkVideo[] = (data as WorkVideoWithRelations[]).map(video => ({
+        id: video.id.toString(),
+        workID: video.work_id || 0,
+        title: video.video_title || '無題',
+        creator: video.admins?.name || '不明',
+        createdAt: video.created_at ? new Date(video.created_at) : new Date(),
+      }));
+
+      setWorkVideos(videos);
+    } catch (err) {
+      console.error('動画データ取得エラー:', err);
+      setError('動画データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 管理者リストを取得
+  const fetchAdmins = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .select('id, name')
+        .is('deleted_at', null);
+
+      if (error) throw error;
+
+      setAdminList((data || []).map(admin => ({
+        id: admin.id,
+        name: admin.name || '名前未設定'
+      })));
+    } catch (err) {
+      console.error('管理者データ取得エラー:', err);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/admin/login');
   };
 
@@ -91,16 +183,65 @@ const WorkVideoListPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual video upload logic
-    console.log('動画アップロード:', formData);
-    alert('動画が追加されました！');
-    handleCloseModal();
+    
+    if (!formData.file) {
+      alert('動画ファイルを選択してください');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // TODO: 実際のファイルアップロード実装
+      // 現時点では、video_urlは仮のURLを設定
+      const videoUrl = `https://example.com/videos/${Date.now()}_${formData.file.name}`;
+      
+      // 動画情報をデータベースに保存
+      const { error } = await supabase
+        .from('work_videos')
+        .insert({
+          video_title: formData.title,
+          video_url: videoUrl,
+          created_admin_id: parseInt(formData.creatorID),
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      alert('動画が追加されました！');
+      handleCloseModal();
+      fetchWorkVideos(); // リストを更新
+    } catch (err) {
+      console.error('動画追加エラー:', err);
+      alert('動画の追加に失敗しました');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteVideo = (videoId: string) => {
-    alert(`動画ID: ${videoId} の削除機能は現在実装中です。`);
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm('この動画を削除してもよろしいですか？')) return;
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('work_videos')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', parseInt(videoId));
+
+      if (error) throw error;
+
+      alert('動画を削除しました');
+      fetchWorkVideos(); // リストを更新
+    } catch (err) {
+      console.error('動画削除エラー:', err);
+      alert('動画の削除に失敗しました');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -172,30 +313,53 @@ const WorkVideoListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {mockWorkVideos.map((video) => (
-                  <tr key={video.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-6 py-4">
-                      <div className="w-20 h-12 bg-gray-200 rounded"></div>
-                    </td>
-                    <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
-                      {video.workName}
-                    </td>
-                    <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
-                      {video.creator}
-                    </td>
-                    <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
-                      {video.createdAt}
-                    </td>
-                    <td className="border border-gray-300 px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleDeleteVideo(video.id)}
-                        className="text-gray-600 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                      読み込み中...
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : workVideos.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                      動画がありません
+                    </td>
+                  </tr>
+                ) : (
+                  workVideos.map((video) => (
+                    <tr key={video.id} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-6 py-4">
+                        <div className="w-20 h-12 bg-gray-200 rounded flex items-center justify-center">
+                          <Video size={20} className="text-gray-400" />
+                        </div>
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
+                        {video.title}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
+                        {video.creator}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
+                        {video.createdAt.toLocaleDateString('ja-JP')}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-center">
+                        <button
+                          onClick={() => handleDeleteVideo(video.id)}
+                          className="text-gray-600 hover:text-red-600 transition-colors"
+                          disabled={loading}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -308,14 +472,14 @@ const WorkVideoListPage: React.FC = () => {
                 </label>
                 <select
                   id="creator"
-                  value={formData.creator}
-                  onChange={(e) => handleFormChange('creator', e.target.value)}
+                  value={formData.creatorID}
+                  onChange={(e) => handleFormChange('creatorID', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   required
                 >
                   <option value="">作成者を選択してください</option>
                   {adminList.map((admin) => (
-                    <option key={admin.id} value={admin.name}>
+                    <option key={admin.id} value={admin.id.toString()}>
                       {admin.name}
                     </option>
                   ))}
@@ -333,7 +497,7 @@ const WorkVideoListPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={!formData.file || !formData.title || !formData.creator}
+                  disabled={!formData.file || !formData.title || !formData.creatorID || loading}
                   className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   追加

@@ -1,17 +1,159 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockWorkerDetails } from '../../data/mockData';
 import { Edit, Save, X } from 'lucide-react';
+import { supabase } from '../../utils/supabase';
+import { WorkerDetail } from '../../types/worker';
+import WorkStatusBadge from '../../components/WorkStatusBadge';
+import type { Database } from '../../types/database.types';
+import { WorkStatus } from '../../constants/workStatus';
+
+// Supabaseの型を拡張
+type WorkerWithRelations = Database['public']['Tables']['workers']['Row'] & {
+  groups?: {
+    name: string | null;
+  } | null;
+  worker_skills?: Array<{
+    id: number;
+    rank_id: number | null;
+    comment: string | null;
+    m_rank?: {
+      rank: string | null;
+    } | null;
+  }>;
+  works?: Array<{
+    id: number;
+    work_title: string | null;
+    status: number | null;
+  }>;
+};
 
 const WorkerDetailPage: React.FC = () => {
-  const { name } = useParams<{ name: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const workerDetail = name ? mockWorkerDetails[name] : null;
-  
+  const [workerDetail, setWorkerDetail] = useState<WorkerDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
-  const [editedWorker, setEditedWorker] = useState(workerDetail);
+  const [editedWorker, setEditedWorker] = useState<WorkerDetail | null>(null);
 
-  const handleLogout = () => {
+  // 認証チェックとデータ取得
+  const checkAuthentication = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        navigate('/admin/login');
+        return;
+      }
+      // 認証確認後、データを取得
+      if (id) {
+        console.log('URL parameter id:', id, 'parsed:', parseInt(id));
+        fetchWorkerDetail(parseInt(id));
+      } else {
+        console.log('No id parameter found in URL');
+      }
+    } catch (err) {
+      console.error('認証チェックエラー:', err);
+      navigate('/admin/login');
+    }
+  }, [navigate, id]);
+
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
+
+  // 作業者詳細データを取得
+  const fetchWorkerDetail = async (workerId: number) => {
+    try {
+      console.log('Fetching worker detail for ID:', workerId);
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('workers')
+        .select(`
+          *,
+          groups (
+            name
+          ),
+          worker_skills (
+            id,
+            rank_id,
+            comment,
+            m_rank (
+              rank
+            )
+          ),
+          works (
+            id,
+            work_title,
+            status
+          )
+        `)
+        .eq('id', workerId)
+        .is('deleted_at', null)
+        .single();
+
+      console.log('Supabase query result:', { data, error });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.log('No worker data found');
+        setError('作業者が見つかりませんでした');
+        return;
+      }
+
+      const worker = data as WorkerWithRelations;
+      
+      // WorkerDetail型に変換
+      const detail: WorkerDetail = {
+        id: worker.id,
+        name: worker.name || '',
+        email: worker.email || '',
+        authUserID: worker.auth_user_id,
+        birthDate: worker.birthday ? new Date(worker.birthday) : undefined,
+        address: worker.address || undefined,
+        nextVisitDate: worker.next_visit_date ? new Date(worker.next_visit_date) : undefined,
+        unitPrice: worker.unit_price || undefined,
+        groupID: worker.group_id || undefined,
+        group: worker.groups ? {
+          id: worker.group_id || 0,
+          name: worker.groups.name || ''
+        } : undefined,
+        skills: (worker.worker_skills || []).map(skill => ({
+          id: skill.id,
+          workerID: worker.id,
+          rankID: skill.rank_id || 0,
+          rankName: skill.m_rank?.rank || undefined,
+          comment: skill.comment || undefined
+        })),
+        workHistory: (worker.works || []).map(work => ({
+          work: {
+            id: work.id,
+            title: work.work_title || '',
+            status: (work.status || WorkStatus.REQUEST_PLANNED) as WorkStatus,
+            quantity: 0,
+            unitPrice: 0
+          },
+          assignedAt: new Date(),
+          startedAt: work.status === WorkStatus.IN_PROGRESS ? new Date() : undefined,
+          completedAt: work.status === WorkStatus.COMPLETED ? new Date() : undefined
+        }))
+      };
+
+      setWorkerDetail(detail);
+      setEditedWorker(detail);
+    } catch (err) {
+      console.error('作業者詳細取得エラー:', err);
+      setError('作業者詳細の取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/admin/login');
   };
 
@@ -33,12 +175,43 @@ const WorkerDetailPage: React.FC = () => {
     setEditedWorker(workerDetail);
   };
 
-  const handleSave = () => {
-    if (editedWorker && name) {
-      // Update the mock data (in a real app, this would be an API call)
-      mockWorkerDetails[name] = { ...editedWorker };
+  const handleSave = async () => {
+    if (!editedWorker) return;
+
+    try {
+      setLoading(true);
+
+      // 作業者基本情報を更新
+      const { error: workerError } = await supabase
+        .from('workers')
+        .update({
+          name: editedWorker.name,
+          email: editedWorker.email,
+          birthday: editedWorker.birthDate ? editedWorker.birthDate.toISOString().split('T')[0] : null,
+          address: editedWorker.address || null,
+          next_visit_date: editedWorker.nextVisitDate ? editedWorker.nextVisitDate.toISOString().split('T')[0] : null,
+          unit_price: editedWorker.unitPrice || null,
+          group_id: editedWorker.groupID || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editedWorker.id);
+
+      if (workerError) throw workerError;
+
+      // スキル情報を更新（必要に応じて実装）
+      
       setIsEditing(false);
       alert('変更が保存されました。');
+      
+      // データを再取得
+      if (id) {
+        fetchWorkerDetail(parseInt(id));
+      }
+    } catch (err) {
+      console.error('保存エラー:', err);
+      alert('保存に失敗しました。');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,7 +240,7 @@ const WorkerDetailPage: React.FC = () => {
     }
   };
 
-  if (!workerDetail || !editedWorker) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-100">
         <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
@@ -93,7 +266,39 @@ const WorkerDetailPage: React.FC = () => {
           </div>
         </header>
         <div className="p-8 text-center">
-          <p>作業者が見つかりませんでした。</p>
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !workerDetail || !editedWorker) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="bg-white rounded-md p-2">
+              <span className="text-gray-600 text-sm">⋮⋮⋮</span>
+            </div>
+            <h1 className="text-lg font-medium">作業者詳細</h1>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleWorkerList}
+              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
+            >
+              作業者一覧
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
+            >
+              ログアウト
+            </button>
+          </div>
+        </header>
+        <div className="p-8 text-center">
+          <p className="text-red-500">{error || '作業者が見つかりませんでした。'}</p>
         </div>
       </div>
     );
@@ -198,12 +403,12 @@ const WorkerDetailPage: React.FC = () => {
                   {isEditing ? (
                     <input
                       type="date"
-                      value={editedWorker.birthDate ? editedWorker.birthDate.replace(/\./g, '-') : ''}
-                      onChange={(e) => handleInputChange('birthDate', e.target.value.replace(/-/g, '.'))}
+                      value={editedWorker.birthDate ? editedWorker.birthDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => handleInputChange('birthDate', e.target.value ? new Date(e.target.value) : undefined)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">{editedWorker.birthDate}</div>
+                    <div className="text-lg text-gray-900">{editedWorker.birthDate ? editedWorker.birthDate.toLocaleDateString('ja-JP') : '-'}</div>
                   )}
                 </div>
               </div>
@@ -232,12 +437,12 @@ const WorkerDetailPage: React.FC = () => {
                   {isEditing ? (
                     <input
                       type="date"
-                      value={editedWorker.nextVisitDate ? editedWorker.nextVisitDate.replace(/\./g, '-') : ''}
-                      onChange={(e) => handleInputChange('nextVisitDate', e.target.value.replace(/-/g, '.'))}
+                      value={editedWorker.nextVisitDate ? editedWorker.nextVisitDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => handleInputChange('nextVisitDate', e.target.value ? new Date(e.target.value) : undefined)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">{editedWorker.nextVisitDate}</div>
+                    <div className="text-lg text-gray-900">{editedWorker.nextVisitDate ? editedWorker.nextVisitDate.toLocaleDateString('ja-JP') : '-'}</div>
                   )}
                 </div>
               </div>
@@ -249,51 +454,31 @@ const WorkerDetailPage: React.FC = () => {
                   {isEditing ? (
                     <input
                       type="number"
-                      value={editedWorker.hourlyRate}
-                      onChange={(e) => handleInputChange('hourlyRate', parseInt(e.target.value) || 0)}
+                      value={editedWorker.unitPrice || ''}
+                      onChange={(e) => handleInputChange('unitPrice', parseInt(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                       min="0"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">¥{editedWorker.hourlyRate}</div>
+                    <div className="text-lg text-gray-900">{editedWorker.unitPrice ? `¥${editedWorker.unitPrice}` : '-'}</div>
                   )}
                 </div>
               </div>
 
-              {/* ログイン情報 */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-sm font-medium text-gray-700 mb-4 block">ログイン情報</label>
-                <div className="ml-8 space-y-4">
-                  <div className="flex items-center">
-                    <label className="text-xs text-gray-500 w-24 flex-shrink-0">メールアドレス</label>
-                    <div className="ml-4 flex-1">
-                      {isEditing ? (
-                        <input
-                          type="email"
-                          value={editedWorker.loginInfo.email}
-                          onChange={(e) => handleInputChange('loginInfo.email', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">{editedWorker.loginInfo.email}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <label className="text-xs text-gray-500 w-24 flex-shrink-0">パスワード</label>
-                    <div className="ml-4 flex-1">
-                      {isEditing ? (
-                        <input
-                          type="password"
-                          value={editedWorker.loginInfo.password}
-                          onChange={(e) => handleInputChange('loginInfo.password', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">{editedWorker.loginInfo.password}</div>
-                      )}
-                    </div>
-                  </div>
+              {/* メールアドレス */}
+              <div className="border-b border-gray-200 pb-4 flex items-center">
+                <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">メールアドレス</label>
+                <div className="ml-8 flex-1">
+                  {isEditing ? (
+                    <input
+                      type="email"
+                      value={editedWorker.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                    />
+                  ) : (
+                    <div className="text-lg text-gray-900">{editedWorker.email || '-'}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -310,16 +495,15 @@ const WorkerDetailPage: React.FC = () => {
                   <div className="ml-4 flex-1">
                     {isEditing ? (
                       <select
-                        value={editedWorker.group}
-                        onChange={(e) => handleInputChange('group', e.target.value)}
+                        value={editedWorker.groupID?.toString() || ''}
+                        onChange={(e) => handleInputChange('groupID', parseInt(e.target.value) || undefined)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                       >
-                        <option value="グループAA">グループAA</option>
-                        <option value="グループBA">グループBA</option>
-                        <option value="グループ3B">グループ3B</option>
+                        <option value="">選択してください</option>
+                        {/* TODO: グループマスタから取得 */}
                       </select>
                     ) : (
-                      <div className="text-sm text-gray-900">{editedWorker.group}</div>
+                      <div className="text-sm text-gray-900">{editedWorker.group?.name || '-'}</div>
                     )}
                   </div>
                 </div>
@@ -331,13 +515,24 @@ const WorkerDetailPage: React.FC = () => {
                 <div className="ml-8">
                   {isEditing ? (
                     <textarea
-                      value={editedWorker.skills}
-                      onChange={(e) => handleInputChange('skills', e.target.value)}
+                      value={editedWorker.skills.map(s => s.rankName || s.comment || '').join('\n')}
+                      onChange={(e) => console.log('スキル編集はTODO')}
                       rows={4}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{editedWorker.skills}</p>
+                    <div className="text-sm text-gray-600">
+                      {editedWorker.skills.length > 0 ? (
+                        editedWorker.skills.map((skill, index) => (
+                          <div key={skill.id || index}>
+                            {skill.rankName && <span className="font-medium">{skill.rankName}</span>}
+                            {skill.comment && <span className="ml-2">{skill.comment}</span>}
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -349,7 +544,7 @@ const WorkerDetailPage: React.FC = () => {
           <div className="mt-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4">作業一覧</h3>
             <div className="space-y-3">
-              {editedWorker.workHistory.map((work, index) => (
+              {editedWorker.workHistory.map((workHistory, index) => (
                 <div key={index} className="flex items-center space-x-4">
                   {/* 番号 */}
                   <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
@@ -358,31 +553,12 @@ const WorkerDetailPage: React.FC = () => {
                   
                   {/* ステータスバッジ */}
                   <div className="flex-shrink-0">
-                    {work.status === 'progress' && (
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-500 text-white">
-                        着手中
-                      </span>
-                    )}
-                    {work.status === 'completed' && (
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-500 text-white">
-                        完了
-                      </span>
-                    )}
-                    {work.status === 'planned' && (
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-500 text-white">
-                        予定
-                      </span>
-                    )}
-                    {work.status === 'none' && (
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-400 text-white">
-                        -
-                      </span>
-                    )}
+                    <WorkStatusBadge status={workHistory.work.status} />
                   </div>
                   
                   {/* 作業名 */}
                   <div className="flex-1 text-sm text-gray-900">
-                    {work.id} / {work.name}
+                    #{workHistory.work.id} / {workHistory.work.title}
                   </div>
                 </div>
               ))}
