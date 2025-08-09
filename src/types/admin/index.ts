@@ -1,76 +1,37 @@
-import { WorkStatus } from '../../constants/workStatus';
-
-export interface WorkItem {
+export interface Admin {
   id: number;
   name: string;
-  status: WorkStatus;
-  assignee?: string;
-  quantity: number;
-  unitPrice: number;
-  totalCost: number;
-  deliveryDate?: string;
-}
-
-export interface User {
   email: string;
-  isAuthenticated: boolean;
+  authUserID: string;
 }
 
-export interface Account {
-  id: string;
-  name: string;
-  hasWorkListAccess: boolean;
-  hasEmailAccess: boolean;
-  hasLineAccess: boolean;
-  hasChatworkAccess: boolean;
+export interface AdminDetail extends Admin {
+  permissions: AdminPermissions;
+  notifications: AdminNotifications;
+  notificationSettings: NotificationSettings;
 }
 
-export interface AccountDetail extends Account {
+export interface AdminPermissions {
+  view: boolean;
+  register: boolean;
+  update: boolean;
+  delete: boolean;
+}
+
+export interface AdminNotifications {
   email: string;
-  permissions: {
-    view: boolean;
-    register: boolean;
-    update: boolean;
-    delete: boolean;
-  };
-  notifications: {
-    email: string;
-    line: string;
-    chatwork: string;
-  };
-  notificationSettings: {
-    workRegistration: boolean;
-    workStart: boolean;
-    workComplete: boolean;
-  };
+  line?: string;
+  chatwork?: string;
 }
 
-export interface WorkerDetail {
-  name: string;
-  birthDate: string;
-  address: string;
-  nextVisitDate: string;
-  hourlyRate: number;
-  loginInfo: {
-    email: string;
-    password: string;
-  };
-  group: string;
-  skills: string;
-  workHistory: Array<{
-    id: number;
-    name: string;
-    status: WorkStatus;
-    quantity?: number;
-    unitPrice?: number;
-    totalCost?: number;
-    deliveryDate?: string;
-  }>;
+export interface NotificationSettings {
+  workRegistration: boolean;
+  workStart: boolean;
+  workComplete: boolean;
 }
 
-export interface WorkVideo {
-  id: string;
-  workName: string;
-  creator: string;
-  createdAt: string;
+export interface AdminNotificationType {
+  id: number;
+  adminID: number;
+  type: number;
 }
