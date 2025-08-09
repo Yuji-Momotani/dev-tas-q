@@ -1,4 +1,5 @@
-import { WorkItem } from '../admin/types';
+import { WorkItem } from '../types/admin';
+import { WorkStatus, getWorkStatusLabel } from '../constants/workStatus';
 
 // CSV形式の文字列を生成するヘルパー関数
 export const generateCSV = (headers: string[], rows: string[][]): string => {
@@ -41,13 +42,7 @@ export const exportWorkListCSV = (workItems: WorkItem[]): void => {
   ];
 
   const getStatusText = (status: WorkItem['status']): string => {
-    switch (status) {
-      case 'progress': return '着手中';
-      case 'completed': return '完了';
-      case 'planned': return '予定';
-      case 'none': return '-';
-      default: return '-';
-    }
+    return getWorkStatusLabel(status);
   };
 
   const rows = workItems.map(item => [

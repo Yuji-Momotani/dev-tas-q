@@ -1,7 +1,9 @@
+import { WorkStatus } from '../../constants/workStatus';
+
 export interface WorkItem {
   id: string;
   name: string;
-  status: 'progress' | 'completed' | 'planned' | 'none';
+  status: WorkStatus;
   assignee?: string;
   quantity: number;
   unitPrice: number;
@@ -58,11 +60,7 @@ export interface WorkerDetail {
   workHistory: Array<{
     id: string;
     name: string;
-    status: 'progress' | 'completed' | 'planned' | 'none';
-    quantity?: number;
-    unitPrice?: number;
-    totalCost?: number;
-    deliveryDate?: string;
+    status: WorkStatus;
     quantity?: number;
     unitPrice?: number;
     totalCost?: number;

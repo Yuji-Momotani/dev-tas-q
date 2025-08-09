@@ -8,7 +8,6 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
 
   const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -130,19 +129,6 @@ const LoginPage: React.FC = () => {
               placeholder="password"
               required
             />
-          </div>
-          
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              type="checkbox"
-              checked={rememberMe}
-              onChange={() => setRememberMe(!rememberMe)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-              次回から自動的にログイン
-            </label>
           </div>
           
           <button

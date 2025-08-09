@@ -3,14 +3,20 @@
  * データベースのworks.statusカラムの値に対応
  */
 export enum WorkStatus {
-  /** 予定なし */
-  NO_PLAN = 1,
-  /** 予定 */
-  PLANNED = 2,
-  /** 着手中 */
+  /** 依頼予定 */
+  REQUEST_PLANNED = 1,
+  /** 依頼中 */
+  REQUESTING = 2,
+  /** 進行中 */
   IN_PROGRESS = 3,
+  /** 配送中 */
+  IN_DELIVERY = 4,
+  /** 集荷依頼中 */
+  PICKUP_REQUESTING = 5,
+  /** 持込待ち */
+  WAITING_DROPOFF = 6,
   /** 完了 */
-  COMPLETED = 4,
+  COMPLETED = 7,
 }
 
 /**
@@ -18,12 +24,18 @@ export enum WorkStatus {
  */
 export const getWorkStatusLabel = (status: WorkStatus): string => {
   switch (status) {
-    case WorkStatus.NO_PLAN:
-      return '予定なし';
-    case WorkStatus.PLANNED:
-      return '予定';
+    case WorkStatus.REQUEST_PLANNED:
+      return '依頼予定';
+    case WorkStatus.REQUESTING:
+      return '依頼中';
     case WorkStatus.IN_PROGRESS:
-      return '着手中';
+      return '進行中';
+    case WorkStatus.IN_DELIVERY:
+      return '配送中';
+    case WorkStatus.PICKUP_REQUESTING:
+      return '集荷依頼中';
+    case WorkStatus.WAITING_DROPOFF:
+      return '持込待ち';
     case WorkStatus.COMPLETED:
       return '完了';
     default:
@@ -36,15 +48,21 @@ export const getWorkStatusLabel = (status: WorkStatus): string => {
  */
 export const getWorkStatusFromLabel = (label: string): WorkStatus => {
   switch (label) {
-    case '予定なし':
-      return WorkStatus.NO_PLAN;
-    case '予定':
-      return WorkStatus.PLANNED;
-    case '着手中':
+    case '依頼予定':
+      return WorkStatus.REQUEST_PLANNED;
+    case '依頼中':
+      return WorkStatus.REQUESTING;
+    case '進行中':
       return WorkStatus.IN_PROGRESS;
+    case '配送中':
+      return WorkStatus.IN_DELIVERY;
+    case '集荷依頼中':
+      return WorkStatus.PICKUP_REQUESTING;
+    case '持込待ち':
+      return WorkStatus.WAITING_DROPOFF;
     case '完了':
       return WorkStatus.COMPLETED;
     default:
-      return WorkStatus.NO_PLAN;
+      return WorkStatus.REQUEST_PLANNED;
   }
 };
