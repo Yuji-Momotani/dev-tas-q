@@ -1,5 +1,6 @@
 import { WorkItem } from '../types';
 import { Account, WorkVideo } from '../types';
+import { WorkStatus } from '../constants/workStatus';
 
 export const mockWorkItems: WorkItem[] = [
   {
@@ -121,7 +122,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
       { 
         id: '#123456', 
         name: 'ハンダ', 
-        status: 'progress',
+        status: WorkStatus.IN_PROGRESS,
         quantity: 40,
         unitPrice: 400,
         totalCost: 16000,
@@ -130,7 +131,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
       { 
         id: '#789012', 
         name: 'C組み立て', 
-        status: 'planned',
+        status: WorkStatus.REQUESTING,
         quantity: 25,
         unitPrice: 720,
         totalCost: 18000,
@@ -139,7 +140,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
       { 
         id: '#345678', 
         name: 'Aパッキング', 
-        status: 'completed',
+        status: WorkStatus.COMPLETED,
         quantity: 80,
         unitPrice: 300,
         totalCost: 24000,
@@ -163,7 +164,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
       { 
         id: '#234567', 
         name: 'Bパッキング', 
-        status: 'completed',
+        status: WorkStatus.COMPLETED,
         quantity: 100,
         unitPrice: 600,
         totalCost: 60000,
@@ -172,7 +173,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
       { 
         id: '#456789', 
         name: 'D検査', 
-        status: 'progress',
+        status: WorkStatus.IN_PROGRESS,
         quantity: 50,
         unitPrice: 450,
         totalCost: 22500,
@@ -196,7 +197,7 @@ export const mockWorkerDetails: Record<string, WorkerDetail> = {
       { 
         id: '#567890', 
         name: 'E組み立て', 
-        status: 'planned',
+        status: WorkStatus.REQUESTING,
         quantity: 30,
         unitPrice: 800,
         totalCost: 24000,

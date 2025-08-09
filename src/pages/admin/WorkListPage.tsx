@@ -90,7 +90,7 @@ const WorkListPage: React.FC = () => {
       const convertedItems: WorkItem[] = (data as WorkWithWorker[]).map((work) => ({
         id: `#${work.id}`,
         name: work.work_title || '未設定',
-        status: getStatusFromNumber(work.status),
+        status: work.status || WorkStatus.REQUEST_PLANNED,
         assignee: work.workers?.name || null,
         quantity: work.quantity || undefined,
         unitPrice: work.unit_price || undefined,
@@ -132,17 +132,6 @@ const WorkListPage: React.FC = () => {
       setWorkers(data || []);
     } catch (err) {
       console.error('作業者データ取得エラー:', err);
-    }
-  };
-
-  // ステータス番号をWorkStatusBadgeが期待する文字列に変換
-  const getStatusFromNumber = (status: number | null): 'progress' | 'completed' | 'planned' | 'none' => {
-    switch (status) {
-      case WorkStatus.NO_PLAN: return 'none';
-      case WorkStatus.PLANNED: return 'planned';
-      case WorkStatus.IN_PROGRESS: return 'progress';
-      case WorkStatus.COMPLETED: return 'completed';
-      default: return 'none';
     }
   };
 

@@ -1,7 +1,6 @@
 export interface WorkerLoginData {
   id: string;
   password: string;
-  rememberMe: boolean;
 }
 
 export interface WorkerSession {
