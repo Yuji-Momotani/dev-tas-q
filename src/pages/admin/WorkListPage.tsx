@@ -11,7 +11,7 @@ import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
 
-// Supabaseのworks型を拡張してWorkItem型に対応
+// Supabaseのworks型を拡張してWork型に対応
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
   workers?: {
     name: string | null;
@@ -86,16 +86,15 @@ const WorkListPage: React.FC = () => {
         throw error;
       }
 
-      // Supabaseのデータ構造をWorkItem型に変換
-      const convertedItems: WorkItem[] = (data as WorkWithWorker[]).map((work) => ({
+      // Supabaseのデータ構造をWork型に変換
+      const convertedItems: Work[] = (data as WorkWithWorker[]).map((work) => ({
         id: work.id,
-        name: work.work_title || '未設定',
+        title: work.work_title || '未設定',
         status: work.status || WorkStatus.REQUEST_PLANNED,
-        assignee: work.workers?.name || null,
+        workerName: work.workers?.name || undefined,
         quantity: work.quantity || undefined,
-        unitPrice: work.unit_price || undefined,
-        totalCost: (work.quantity && work.unit_price) ? work.quantity * work.unit_price : undefined,
-        deliveryDate: work.delivery_date ? formatDate(work.delivery_date) : undefined,
+        unitPrice: work.unit_price || 0,
+        deliveryDate: work.delivery_date ? new Date(work.delivery_date) : undefined,
       }));
 
       setWorkItems(convertedItems);
@@ -129,20 +128,13 @@ const WorkListPage: React.FC = () => {
         throw error;
       }
 
-      setWorkers(data || []);
+      setWorkers((data || []).map(worker => ({
+        id: worker.id,
+        name: worker.name || '名前未設定'
+      })));
     } catch (err) {
       console.error('作業者データ取得エラー:', err);
     }
-  };
-
-  // 日付フォーマット
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).replace(/\//g, '.');
   };
 
   const handleAccountManagement = () => {
@@ -160,7 +152,7 @@ const WorkListPage: React.FC = () => {
     // フリーワード検索（作業名での前後方一致）
     if (freewordQuery.trim()) {
       filtered = filtered.filter((item) =>
-        item.name.toLowerCase().includes(freewordQuery.toLowerCase())
+        item.title.toLowerCase().includes(freewordQuery.toLowerCase())
       );
     }
 
@@ -169,9 +161,8 @@ const WorkListPage: React.FC = () => {
       filtered = filtered.filter((item) => {
         if (!item.deliveryDate) return false;
         
-        // 日付形式を変換 (YYYY.MM.DD -> YYYY-MM-DD)
-        const itemDateStr = item.deliveryDate.replace(/\./g, '-');
-        const itemDate = new Date(itemDateStr);
+        // 日付形式を変換 (Date -> YYYY-MM-DD)
+        const itemDate = item.deliveryDate;
         
         if (startDate && new Date(startDate) > itemDate) return false;
         if (endDate && new Date(endDate) < itemDate) return false;
@@ -183,7 +174,7 @@ const WorkListPage: React.FC = () => {
     // 作業者名検索
     if (selectedWorker) {
       filtered = filtered.filter((item) => 
-        item.assignee === selectedWorker
+        item.workerName === selectedWorker
       );
     }
 
@@ -249,14 +240,14 @@ const WorkListPage: React.FC = () => {
   };
 
   // 完了ボタンを表示する条件をチェック
-  const canComplete = (workItem: WorkItem): boolean => {
-    return workItem.status === WorkStatus.IN_DELIVERY || 
-           workItem.status === WorkStatus.PICKUP_REQUESTING || 
-           workItem.status === WorkStatus.WAITING_DROPOFF;
+  const canComplete = (item: Work): boolean => {
+    return item.status === WorkStatus.IN_DELIVERY || 
+           item.status === WorkStatus.PICKUP_REQUESTING || 
+           item.status === WorkStatus.WAITING_DROPOFF;
   };
 
-  const handleComplete = async (workItem: WorkItem) => {
-    if (!confirm(`作業「${workItem.name}」を完了にしますか？`)) return;
+  const handleComplete = async (item: Work) => {
+    if (!confirm(`作業「${item.title}」を完了にしますか？`)) return;
 
     try {
       setLoading(true);
@@ -267,7 +258,7 @@ const WorkListPage: React.FC = () => {
           status: WorkStatus.COMPLETED,
           updated_at: new Date().toISOString()
         })
-        .eq('id', workItem.id)
+        .eq('id', item.id)
         .is('deleted_at', null);
 
       if (error) {
@@ -293,8 +284,8 @@ const WorkListPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (workItem: WorkItem) => {
-    if (!confirm(`作業「${workItem.name}」を削除しますか？`)) return;
+  const handleDelete = async (item: Work) => {
+    if (!confirm(`作業「${item.title}」を削除しますか？`)) return;
 
     try {
       setLoading(true);
@@ -302,7 +293,7 @@ const WorkListPage: React.FC = () => {
       const { error } = await supabase
         .from('works')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', workItem.id)
+        .eq('id', item.id)
         .is('deleted_at', null);
 
       if (error) {
@@ -328,10 +319,10 @@ const WorkListPage: React.FC = () => {
     }
   };
 
-  const handlePrint = (workItem: WorkItem) => {
+  const handlePrint = (item: Work) => {
     // QRコードに埋め込むモックデータ
-    console.log(workItem);
-    const qrData = `workerid:1,workid:${workItem.id}`;
+    console.log(item);
+    const qrData = `workerid:1,workid:${item.id}`;
 
     // QRコードを生成するための隠し要素を作成
     const tempDiv = document.createElement('div');
@@ -391,7 +382,7 @@ const WorkListPage: React.FC = () => {
                 <div class="qr-container">
                   <h2>作業QRコード</h2>
                   <img src="${qrDataUrl}" alt="QRコード" class="qr-image" />
-                  <p>作業ID: #${workItem.id}</p>
+                  <p>作業ID: #${item.id}</p>
                 </div>
                 <script>
                   // 少し待ってから印刷プレビューを表示
@@ -594,7 +585,7 @@ const WorkListPage: React.FC = () => {
                       className="border border-gray-300 px-4 py-3 text-sm text-gray-900 cursor-pointer"
                       onClick={() => handleRowClick(`#${item.id}`)}
                     >
-                      #{item.id} / {item.name}
+                      #{item.id} / {item.title}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       <WorkStatusBadge status={item.status} />
@@ -603,12 +594,12 @@ const WorkListPage: React.FC = () => {
                       className="border border-gray-300 px-4 py-3 text-sm text-gray-500 cursor-pointer hover:text-blue-600"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (item.assignee) {
-                          navigate(`/admin/worker-detail/${encodeURIComponent(item.assignee)}`);
+                        if (item.workerName) {
+                          navigate(`/admin/worker-detail/${encodeURIComponent(item.workerName)}`);
                         }
                       }}
                     >
-                      {item.assignee || '-'}
+                      {item.workerName || '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.quantity || '-'}
@@ -617,10 +608,10 @@ const WorkListPage: React.FC = () => {
                       {item.unitPrice ? `¥${item.unitPrice}` : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {item.totalCost ? `¥${item.totalCost.toLocaleString()}` : '-'}
+                      {(item.quantity && item.unitPrice) ? `¥${(item.quantity * item.unitPrice).toLocaleString()}` : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {item.deliveryDate || '-'}
+                      {item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-center">
                       {canComplete(item) ? (

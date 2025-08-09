@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Edit, Save, X, User, AlertTriangle } from 'lucide-react';
+import { Menu, LogOut, Edit, Save, X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
 
@@ -15,8 +15,6 @@ type WorkerType = Tables<'workers'> & {
     } | null;
   }>;
 };
-
-type WorkType = Tables<'works'>;
 
 interface UserProfile {
   name: string;

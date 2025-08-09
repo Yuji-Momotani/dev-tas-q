@@ -1,37 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
 import NotificationConfirmationModal from '../../components/NotificationConfirmationModal';
 import WorkerCreateModal from '../../components/WorkerCreateModal';
-import { UserPlus, Download, X } from 'lucide-react';
+import { Download} from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
-import { exportWorkerListCSV } from '../../utils/csvExport';
 import { supabase } from '../../utils/supabase';
-import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
-
-// Supabaseの型定義
-type Worker = Database['public']['Tables']['workers']['Row'];
-type Work = Database['public']['Tables']['works']['Row'];
-
-// 作業者一覧表示用の型
-interface WorkerListItem {
-  id: number;
-  name: string | null;
-  email: string | null;
-  nextVisitDate: string | null;
-  lastWorkDate: string | null;
-  inProgressWork: string | null;
-  plannedWork: string | null;
-  skill: string | null;
-  groupName: string | null;
-}
+import { Worker } from '../../types/worker';
 
 const WorkerListPage: React.FC = () => {
   const navigate = useNavigate();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [workers, setWorkers] = useState<WorkerListItem[]>([]);
+  const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   // 通達実施モーダル関連の状態
@@ -116,12 +97,12 @@ const WorkerListPage: React.FC = () => {
       }
 
       // データを変換
-      const workerList: WorkerListItem[] = (data || []).map(worker => {
+      const workerList: Worker[] = (data || []).map(worker => {
         const works = worker.works || [];
         const inProgressWork = works.find(w => w.status === WorkStatus.IN_PROGRESS)?.work_title || null;
         
         // 予定作業は複数ある可能性があるので、スラッシュ区切りで結合
-        const plannedWorks = works.filter(w => w.status === WorkStatus.PLANNED).map(w => w.work_title).filter(Boolean);
+        const plannedWorks = works.filter(w => w.status === WorkStatus.REQUEST_PLANNED).map(w => w.work_title).filter(Boolean);
         const plannedWork = plannedWorks.length > 0 ? plannedWorks.join(' / ') : null;
         
         // 最新の作業日時を取得（完了した作業から）
@@ -137,10 +118,15 @@ const WorkerListPage: React.FC = () => {
 
         return {
           id: worker.id,
-          name: worker.name,
-          email: worker.email,
-          nextVisitDate: worker.next_visit_date,
-          lastWorkDate: lastWorkDate ? formatDate(lastWorkDate) : null,
+          name: worker.name || '',
+          email: worker.email || '',
+          authUserID: worker.auth_user_id,
+          birthDate: worker.birthday ? new Date(worker.birthday) : undefined,
+          address: worker.address || undefined,
+          nextVisitDate: worker.next_visit_date ? new Date(worker.next_visit_date) : undefined,
+          unitPrice: worker.unit_price || undefined,
+          groupID: worker.group_id || undefined,
+          lastWorkDate: lastWorkDate ? new Date(lastWorkDate) : undefined,
           inProgressWork,
           plannedWork,
           skill,
@@ -158,8 +144,7 @@ const WorkerListPage: React.FC = () => {
   };
 
   // 日付フォーマット
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
+  const formatDate = (date: Date): string => {
     return date.toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: '2-digit',
@@ -428,7 +413,7 @@ const WorkerListPage: React.FC = () => {
                         {worker.nextVisitDate ? formatDate(worker.nextVisitDate) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {worker.lastWorkDate || '-'}
+                        {worker.lastWorkDate ? formatDate(worker.lastWorkDate) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.skill || '-'}
