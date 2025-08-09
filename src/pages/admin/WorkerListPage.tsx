@@ -389,7 +389,7 @@ const WorkerListPage: React.FC = () => {
                     <tr
                       key={worker.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => worker.name && navigate(`/admin/worker-detail/${encodeURIComponent(worker.name)}`)}
+                      onClick={() => navigate(`/admin/worker-detail/${worker.id}`)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <input
