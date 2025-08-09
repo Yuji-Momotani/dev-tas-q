@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
-import { WorkItem } from '../../types/admin';
+import { Work } from '../../types/work';
 import { Download, Printer, Trash2, Check } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -22,8 +22,8 @@ const WorkListPage: React.FC = () => {
   const navigate = useNavigate();
   
   // 状態管理
-  const [workItems, setWorkItems] = useState<WorkItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<WorkItem[]>([]);
+  const [workItems, setWorkItems] = useState<Work[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [freewordQuery, setFreewordQuery] = useState('');
