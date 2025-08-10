@@ -46,13 +46,13 @@ export const exportWorkListCSV = (workItems: Work[]): void => {
   };
 
   const rows = workItems.map(item => [
-    `#${item.id} / ${item.name}`,
+    `#${item.id} / ${item.title}`,
     getStatusText(item.status),
-    item.assignee || '-',
+    item.workerName || '-',
     item.quantity?.toString() || '-',
     item.unitPrice ? `¥${item.unitPrice}` : '-',
-    item.totalCost ? `¥${item.totalCost.toLocaleString()}` : '-',
-    item.deliveryDate || '-'
+    (item.quantity && item.unitPrice) ? `¥${(item.quantity * item.unitPrice).toLocaleString()}` : '-',
+    item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'
   ]);
 
   const csvContent = generateCSV(headers, rows);

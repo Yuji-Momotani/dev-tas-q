@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Upload, X, Video } from 'lucide-react';
+import { Trash2, Video } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { WorkVideo } from '../../types/work';
 import type { Database } from '../../types/database.types';
+import VideoPlayerModal from '../../components/VideoPlayerModal';
+import VideoAddModal from '../../components/VideoAddModal';
+import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '../../utils/video';
 
 // Supabaseのwork_videos型を拡張
 type WorkVideoWithRelations = Database['public']['Tables']['work_videos']['Row'] & {
   works?: {
+    id: number;
     work_title: string | null;
   } | null;
   admins?: {
@@ -15,19 +19,18 @@ type WorkVideoWithRelations = Database['public']['Tables']['work_videos']['Row']
   } | null;
 };
 
+
 const WorkVideoListPage: React.FC = () => {
   const navigate = useNavigate();
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [adminList, setAdminList] = useState<{ id: number; name: string }[]>([]);
+  const [workList, setWorkList] = useState<{ id: number; title: string; hasVideo?: boolean }[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    creatorID: '',
-    file: null as File | null
-  });
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<number, string>>({});
 
   // 認証チェックとデータ取得
   const checkAuthentication = useCallback(async () => {
@@ -40,6 +43,7 @@ const WorkVideoListPage: React.FC = () => {
       // 認証確認後、データを取得
       fetchWorkVideos();
       fetchAdmins();
+      fetchWorks();
     } catch (err) {
       console.error('認証チェックエラー:', err);
       navigate('/admin/login');
@@ -64,6 +68,7 @@ const WorkVideoListPage: React.FC = () => {
           created_admin_id,
           work_id,
           works (
+            id,
             work_title
           ),
           admins (
@@ -77,14 +82,31 @@ const WorkVideoListPage: React.FC = () => {
 
       // データをWorkVideo型に変換
       const videos: WorkVideo[] = (data as WorkVideoWithRelations[]).map(video => ({
-        id: video.id.toString(),
+        id: video.id,
         workID: video.work_id || 0,
         title: video.video_title || '無題',
         creator: video.admins?.name || '不明',
         createdAt: video.created_at ? new Date(video.created_at) : new Date(),
+        workTitle: video.works?.work_title || undefined,
+        videoUrl: video.video_url || undefined
       }));
 
       setWorkVideos(videos);
+
+      // アップロード動画のサムネイルを生成
+      videos.forEach(async (video) => {
+        if (video.videoUrl && !isValidYouTubeUrl(video.videoUrl)) {
+          try {
+            const thumbnailDataUrl = await generateVideoThumbnail(video.videoUrl);
+            setVideoThumbnails(prev => ({
+              ...prev,
+              [video.id]: thumbnailDataUrl
+            }));
+          } catch (error) {
+            console.warn(`動画ID ${video.id} のサムネイル生成に失敗:`, error);
+          }
+        }
+      });
     } catch (err) {
       console.error('動画データ取得エラー:', err);
       setError('動画データの取得に失敗しました');
@@ -112,6 +134,34 @@ const WorkVideoListPage: React.FC = () => {
     }
   };
 
+  // 作業リストを取得
+  const fetchWorks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('works')
+        .select(`
+          id, 
+          work_title,
+          work_videos!left (
+            id
+          )
+        `)
+        .is('deleted_at', null)
+        .is('work_videos.deleted_at', null)
+        .order('work_title');
+
+      if (error) throw error;
+
+      setWorkList((data || []).map(work => ({
+        id: work.id,
+        title: work.work_title || '無題',
+        hasVideo: work.work_videos && work.work_videos.length > 0
+      })));
+    } catch (err) {
+      console.error('作業データ取得エラー:', err);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/admin/login');
@@ -129,74 +179,79 @@ const WorkVideoListPage: React.FC = () => {
     setShowAddModal(true);
   };
 
-  const handleCloseModal = () => {
-    setShowAddModal(false);
-    setFormData({
-      title: '',
-      creator: '',
-      file: null
-    });
-    setIsDragOver(false);
-  };
-
-  const handleFormChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleFileSelect = (file: File) => {
-    if (file.type.startsWith('video/')) {
-      setFormData(prev => ({
-        ...prev,
-        file: file
-      }));
+  const handlePlayVideo = (video: WorkVideo) => {
+    if (video.videoUrl) {
+      setSelectedVideo({ url: video.videoUrl, title: video.title });
+      setShowVideoModal(true);
     } else {
-      alert('動画ファイルを選択してください。');
+      alert('動画URLが設定されていません');
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
+  const handleCloseVideoModal = () => {
+    setShowVideoModal(false);
+    setSelectedVideo(null);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFileSelect(file);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 動画追加モーダルのサブミット処理
+  const handleVideoSubmit = async (formData: {
+    title: string;
+    creatorID: string;
+    workID: string;
+    uploadType: 'file' | 'youtube';
+    file: File | null;
+    youtubeUrl: string;
+  }) => {
+    setLoading(true);
     
-    if (!formData.file) {
-      alert('動画ファイルを選択してください');
-      return;
-    }
-
     try {
-      setLoading(true);
+      // 認証状態を確認
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      console.log('Auth session:', session);
+      console.log('User role:', session?.user?.role);
+      console.log('User ID:', session?.user?.id);
       
-      // TODO: 実際のファイルアップロード実装
-      // 現時点では、video_urlは仮のURLを設定
-      const videoUrl = `https://example.com/videos/${Date.now()}_${formData.file.name}`;
+      if (authError || !session) {
+        throw new Error('認証が必要です。ログインしてください。');
+      }
+
+      let videoUrl: string;
+
+      if (formData.uploadType === 'file' && formData.file) {
+        // ファイルアップロードの場合
+        const fileExtension = formData.file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExtension}`;
+        const filePath = `work-videos/${fileName}`;
+        
+        console.log('Uploading file to path:', filePath);
+        
+        // ファイルをアップロード
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('videos')
+          .upload(filePath, formData.file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
+        if (uploadError) {
+          throw new Error(`ファイルアップロードに失敗しました: ${uploadError.message}`);
+        }
+        
+        // アップロードしたファイルの公開URLを取得
+        const { data: urlData } = supabase.storage
+          .from('videos')
+          .getPublicUrl(filePath);
+        
+        videoUrl = urlData.publicUrl;
+      } else {
+        // YouTube URLの場合
+        videoUrl = formData.youtubeUrl;
+        console.log('Using YouTube URL:', videoUrl);
+      }
       
       // 動画情報をデータベースに保存
       const { error } = await supabase
@@ -204,6 +259,7 @@ const WorkVideoListPage: React.FC = () => {
         .insert({
           video_title: formData.title,
           video_url: videoUrl,
+          work_id: formData.workID ? parseInt(formData.workID) : null,
           created_admin_id: parseInt(formData.creatorID),
           created_at: new Date().toISOString()
         });
@@ -211,26 +267,56 @@ const WorkVideoListPage: React.FC = () => {
       if (error) throw error;
 
       alert('動画が追加されました！');
-      handleCloseModal();
       fetchWorkVideos(); // リストを更新
     } catch (err) {
       console.error('動画追加エラー:', err);
       alert('動画の追加に失敗しました');
+      throw err; // エラーを再スローして、モーダル側でハンドリングする
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
+  const handleDeleteVideo = async (videoId: number) => {
     if (!confirm('この動画を削除してもよろしいですか？')) return;
 
     try {
       setLoading(true);
       
+      // まず、動画情報を取得してStorageのパスを確認
+      const { data: videoData, error: fetchError } = await supabase
+        .from('work_videos')
+        .select('video_url')
+        .eq('id', videoId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Storageからファイルを削除（video_urlからファイルパスを抽出）
+      if (videoData?.video_url) {
+        const url = new URL(videoData.video_url);
+        const pathSegments = url.pathname.split('/');
+        // /storage/v1/object/public/videos/work-videos/filename.mp4 のようなパスから
+        // work-videos/filename.mp4 を抽出
+        const bucketIndex = pathSegments.indexOf('videos');
+        if (bucketIndex !== -1 && bucketIndex < pathSegments.length - 1) {
+          const filePath = pathSegments.slice(bucketIndex + 1).join('/');
+          
+          const { error: storageError } = await supabase.storage
+            .from('videos')
+            .remove([filePath]);
+          
+          if (storageError) {
+            console.warn('Storageからの削除に失敗:', storageError);
+          }
+        }
+      }
+      
+      // データベースから削除（論理削除）
       const { error } = await supabase
         .from('work_videos')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', parseInt(videoId));
+        .eq('id', videoId);
 
       if (error) throw error;
 
@@ -298,8 +384,11 @@ const WorkVideoListPage: React.FC = () => {
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
                     動画
                   </th>
+									<th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
+                    動画タイトル
+                  </th>
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
-                    作成者
+                    関連作業
                   </th>
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
                     作成者
@@ -307,40 +396,98 @@ const WorkVideoListPage: React.FC = () => {
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
                     作成日時
                   </th>
-                  <th className="border border-gray-300 px-6 py-3 text-center text-sm font-medium text-gray-700 w-16">
-                    
+                  <th className="border border-gray-300 px-6 py-3 text-center text-sm font-medium text-gray-700 w-20">
+                    削除
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
                       読み込み中...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-red-500">
+                    <td colSpan={6} className="border border-gray-300 px-6 py-8 text-center text-red-500">
                       {error}
                     </td>
                   </tr>
                 ) : workVideos.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
                       動画がありません
                     </td>
                   </tr>
                 ) : (
                   workVideos.map((video) => (
                     <tr key={video.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-6 py-4">
-                        <div className="w-20 h-12 bg-gray-200 rounded flex items-center justify-center">
-                          <Video size={20} className="text-gray-400" />
+                      <td 
+                        className="border border-gray-300 px-6 py-4 cursor-pointer"
+                        onClick={() => handlePlayVideo(video)}
+                      >
+                        <div className="w-20 h-12 bg-gray-200 rounded overflow-hidden relative group">
+                          {video.videoUrl ? (
+                            <>
+                              {isValidYouTubeUrl(video.videoUrl) ? (
+                                // YouTube動画の場合
+                                <img 
+                                  src={getYouTubeThumbnail(video.videoUrl) || ''}
+                                  alt={video.title}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // エラー時はデフォルトアイコンに戻す
+                                    const target = e.currentTarget;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      const fallback = parent.querySelector('.fallback-icon');
+                                      if (fallback) fallback.classList.remove('hidden');
+                                    }
+                                  }}
+                                />
+                              ) : videoThumbnails[video.id] ? (
+                                // アップロード動画でサムネイルが生成済みの場合
+                                <img 
+                                  src={videoThumbnails[video.id]}
+                                  alt={video.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                // アップロード動画でサムネイル生成中の場合
+                                <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                  <div className="animate-pulse">
+                                    <Video size={16} className="text-gray-400" />
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                  </svg>
+                                </div>
+                              </div>
+                              
+                              <div className="fallback-icon hidden w-full h-full flex items-center justify-center bg-gray-200">
+                                <Video size={20} className="text-gray-400" />
+                              </div>
+                            </>
+                          ) : (
+                            // URLがない場合
+                            <div className="w-full h-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+                              <Video size={20} className="text-gray-400" />
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
                         {video.title}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
+                        {video.workTitle ? `#${video.workID} / ${video.workTitle}` : '-'}
                       </td>
                       <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
                         {video.creator}
@@ -371,142 +518,21 @@ const WorkVideoListPage: React.FC = () => {
       </footer>
 
       {/* 動画追加モーダル */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                <Video className="w-5 h-5 mr-2" />
-                動画追加
-              </h2>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      <VideoAddModal
+        isOpen={showAddModal}
+        onClose={handleCloseAddModal}
+        onSubmit={handleVideoSubmit}
+        adminList={adminList}
+        workList={workList}
+        loading={loading}
+      />
 
-            {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="p-6">
-              {/* ファイルアップロード欄 */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  作業動画 <span className="text-red-500">*</span>
-                </label>
-                <div
-                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-                    isDragOver
-                      ? 'border-green-500 bg-green-50'
-                      : formData.file
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() => document.getElementById('video-file-input')?.click()}
-                >
-                  {formData.file ? (
-                    <div className="space-y-2">
-                      <Video className="w-12 h-12 text-green-600 mx-auto" />
-                      <p className="text-sm font-medium text-green-600">
-                        {formData.file.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {(formData.file.size / (1024 * 1024)).toFixed(2)} MB
-                      </p>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFormData(prev => ({ ...prev, file: null }));
-                        }}
-                        className="text-xs text-red-600 hover:text-red-800"
-                      >
-                        削除
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                      <p className="text-sm text-gray-600">
-                        ファイルをドラッグ&ドロップするか、クリックして選択
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        対応形式: MP4, MOV, AVI, WMV
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <input
-                  id="video-file-input"
-                  type="file"
-                  accept="video/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </div>
-
-              {/* タイトル */}
-              <div className="mb-4">
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                  タイトル <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleFormChange('title', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="動画のタイトルを入力してください"
-                  required
-                />
-              </div>
-
-              {/* 作成者 */}
-              <div className="mb-6">
-                <label htmlFor="creator" className="block text-sm font-medium text-gray-700 mb-2">
-                  作成者 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="creator"
-                  value={formData.creatorID}
-                  onChange={(e) => handleFormChange('creatorID', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">作成者を選択してください</option>
-                  {adminList.map((admin) => (
-                    <option key={admin.id} value={admin.id.toString()}>
-                      {admin.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  disabled={!formData.file || !formData.title || !formData.creatorID || loading}
-                  className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  追加
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* 動画再生モーダル */}
+      <VideoPlayerModal
+        isOpen={showVideoModal}
+        onClose={handleCloseVideoModal}
+        video={selectedVideo}
+      />
     </div>
   );
 };
