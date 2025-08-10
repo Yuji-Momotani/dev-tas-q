@@ -153,8 +153,11 @@ const WorkerWorkPage: React.FC = () => {
       try {
         const thumbnail = await generateVideoThumbnail(video.video_url);
         setVideoThumbnails(prev => ({ ...prev, [workId]: thumbnail }));
+        console.log('✅ サムネイル生成成功 - 作業ID:', workId);
       } catch (error) {
-        console.error('サムネイル生成エラー:', error);
+        console.error('❌ サムネイル生成エラー - 作業ID:', workId, error);
+        console.log('⚠️ サムネイル表示なしで動画再生は可能です');
+        // エラーを無視して処理続行（動画再生には影響しない）
       }
     }
   };

@@ -48,13 +48,9 @@ export const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
     console.log('🌍 環境判定:', isProduction ? '本番環境' : 'ローカル環境');
     console.log('🌍 ホスト名:', window.location.hostname);
     
-    // 本番環境ではcrossOriginを設定しない（CORSエラー回避）
-    if (!isProduction) {
-      video.crossOrigin = 'anonymous';
-      console.log('🔒 crossOrigin設定: anonymous');
-    } else {
-      console.log('🔒 crossOrigin設定: なし（本番環境）');
-    }
+    // crossOriginは常に設定（本番環境でもSupabase StorageがCORSを要求するため）
+    video.crossOrigin = 'anonymous';
+    console.log('🔒 crossOrigin設定: anonymous');
     
     // タイムアウト設定
     const timeoutId = setTimeout(() => {
