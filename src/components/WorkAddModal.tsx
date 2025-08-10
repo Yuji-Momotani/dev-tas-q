@@ -17,7 +17,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
   const [formData, setFormData] = useState({
     name: '',
     group: '',
-    status: 0, // 0: 未選択, 1: 予定なし, 2: 予定, 3: 着手中, 4: 完了
+    status: 0, // 0: 未選択, 1: 依頼予定, 2: 依頼中, 3: 進行中, 4: 配送中, 5: 集荷依頼中, 6: 持込待ち, 7: 完了
     assignee: '',
     assigneeId: null as number | null,
     quantity: 0,
@@ -204,27 +204,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       newErrors.status = '進捗は必須です';
     }
 
-    // 着手中の場合、同じ作業者が既に着手中の作業を持っていないかチェック
-    if (formData.status === WorkStatus.IN_PROGRESS && formData.assigneeId) {
-      try {
-        const { data, error } = await supabase
-          .from('works')
-          .select('id, work_title')
-          .eq('worker_id', formData.assigneeId)
-          .eq('status', WorkStatus.IN_PROGRESS)
-          .is('deleted_at', null);
-
-        if (error) {
-          console.error('着手中作業チェックエラー:', error);
-          newErrors.status = '着手中作業の確認に失敗しました';
-        } else if (data && data.length > 0) {
-          newErrors.status = `選択した作業者は既に着手中の作業があります（作業ID: #${data[0].id}）`;
-        }
-      } catch (err) {
-        console.error('着手中作業チェックエラー:', err);
-        newErrors.status = '着手中作業の確認に失敗しました';
-      }
-    }
+    // 進行中の作業のチェックは削除（複数作業の同時進行を可能にするため）
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -414,9 +394,12 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
               }`}
             >
               <option value={0}>選択してください</option>
-              <option value={WorkStatus.NO_PLAN}>予定なし</option>
-              <option value={WorkStatus.PLANNED}>予定</option>
-              <option value={WorkStatus.IN_PROGRESS}>着手中</option>
+              <option value={WorkStatus.REQUEST_PLANNED}>依頼予定</option>
+              <option value={WorkStatus.REQUESTING}>依頼中</option>
+              <option value={WorkStatus.IN_PROGRESS}>進行中</option>
+              <option value={WorkStatus.IN_DELIVERY}>配送中</option>
+              <option value={WorkStatus.PICKUP_REQUESTING}>集荷依頼中</option>
+              <option value={WorkStatus.WAITING_DROPOFF}>持込待ち</option>
               <option value={WorkStatus.COMPLETED}>完了</option>
             </select>
             {errors.status && <p className="mt-1 text-sm text-red-600">{errors.status}</p>}

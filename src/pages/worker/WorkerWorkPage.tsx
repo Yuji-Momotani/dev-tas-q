@@ -12,13 +12,12 @@ type WorkType = Tables<'works'> & {
 
 const WorkerWorkPage: React.FC = () => {
   const navigate = useNavigate();
-  const [currentWork, setCurrentWork] = useState<WorkType | null>(null);
-  const [workVideo, setWorkVideo] = useState<Tables<'work_videos'> | null>(null);
+  const [currentWorks, setCurrentWorks] = useState<WorkType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [videoThumbnail, setVideoThumbnail] = useState<string>('');
   const [selectedVideo, setSelectedVideo] = useState<{url: string, title: string} | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [videoThumbnails, setVideoThumbnails] = useState<{[key: number]: string}>({});
 
   // 作業者の認証状態と作業データを取得
   useEffect(() => {
@@ -48,12 +47,12 @@ const WorkerWorkPage: React.FC = () => {
           return;
         }
 
-        // 進行中の作業を取得（status = 3: 着手中）
+        // 進行中の作業を全て取得（status = 3: 進行中）
         const { data: workData, error: workError } = await supabase
           .from('works')
           .select(`
             *,
-            work_videos!inner (
+            work_videos (
               id,
               video_title,
               video_url
@@ -62,9 +61,7 @@ const WorkerWorkPage: React.FC = () => {
           .eq('worker_id', workerData.id)
           .eq('status', 3)
           .is('deleted_at', null)
-          .is('work_videos.deleted_at', null)
-          .order('updated_at', { ascending: false })
-          .limit(1);
+          .order('updated_at', { ascending: false });
 
         if (workError) {
           console.error('作業データ取得エラー:', workError);
@@ -73,14 +70,15 @@ const WorkerWorkPage: React.FC = () => {
         }
 
         if (workData && workData.length > 0) {
-          setCurrentWork(workData[0]);
-          const video = workData[0].work_videos?.[0] || null;
-          setWorkVideo(video);
+          setCurrentWorks(workData);
           
-          // サムネイル生成
-          if (video) {
-            generateThumbnailForVideo(video);
-          }
+          // 各作業の動画サムネイルを生成
+          workData.forEach((work) => {
+            const video = work.work_videos?.[0];
+            if (video && work.id) {
+              generateThumbnailForVideo(video, work.id);
+            }
+          });
         }
         
       } catch (err) {
@@ -150,22 +148,22 @@ const WorkerWorkPage: React.FC = () => {
     }
   };
 
-  const generateThumbnailForVideo = async (video: Tables<'work_videos'>) => {
+  const generateThumbnailForVideo = async (video: Tables<'work_videos'>, workId: number) => {
     if (video.video_url && !isValidYouTubeUrl(video.video_url)) {
       try {
         const thumbnail = await generateVideoThumbnail(video.video_url);
-        setVideoThumbnail(thumbnail);
+        setVideoThumbnails(prev => ({ ...prev, [workId]: thumbnail }));
       } catch (error) {
         console.error('サムネイル生成エラー:', error);
       }
     }
   };
 
-  const handleVideoClick = () => {
-    if (workVideo?.video_url) {
+  const handleVideoClick = (video: Tables<'work_videos'>) => {
+    if (video?.video_url) {
       setSelectedVideo({
-        url: workVideo.video_url,
-        title: workVideo.video_title || 'Video'
+        url: video.video_url,
+        title: video.video_title || 'Video'
       });
       setIsModalOpen(true);
     }
@@ -176,8 +174,9 @@ const WorkerWorkPage: React.FC = () => {
     setSelectedVideo(null);
   };
 
-  const handleCompleteWork = () => {
-    // 配送方法選択画面に遷移
+  const handleCompleteWork = (workId: number) => {
+    // 作業IDをsessionStorageに保存して配送方法選択画面に遷移
+    sessionStorage.setItem('completingWorkId', workId.toString());
     navigate('/worker/delivery-method');
   };
 
@@ -233,120 +232,127 @@ const WorkerWorkPage: React.FC = () => {
         )}
 
         {/* Main Content */}
-        {currentWork ? (
+        {currentWorks.length > 0 ? (
           // 進行中の作業がある場合
-          <div>
-            {/* 作業情報（動画含む） */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              {/* 関連動画セクション */}
-              <div className="mb-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">関連動画</h3>
-                {workVideo ? (
-                  <div
-                    className="relative cursor-pointer group max-w-md"
-                    onClick={handleVideoClick}
-                  >
-                    <div className="w-full bg-gray-200 rounded-lg aspect-video flex items-center justify-center overflow-hidden">
-                      {isValidYouTubeUrl(workVideo.video_url || '') ? (
-                        <img
-                          src={`https://img.youtube.com/vi/${workVideo.video_url?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`}
-                          alt={workVideo.video_title || 'Video thumbnail'}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = `https://img.youtube.com/vi/${workVideo.video_url?.split('v=')[1]?.split('&')[0]}/hqdefault.jpg`;
-                          }}
-                        />
-                      ) : videoThumbnail ? (
-                        <img
-                          src={videoThumbnail}
-                          alt={workVideo.video_title || 'Video thumbnail'}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                            </svg>
+          <div className="space-y-6">
+            {/* 各作業をカード形式で表示 */}
+            {currentWorks.map((work) => {
+              const workVideo = work.work_videos?.[0] || null;
+              const videoThumbnail = work.id ? videoThumbnails[work.id] : '';
+              
+              return (
+                <div key={work.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  {/* 関連動画セクション */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">関連動画</h3>
+                    {workVideo ? (
+                      <div
+                        className="relative cursor-pointer group max-w-md"
+                        onClick={() => handleVideoClick(workVideo)}
+                      >
+                        <div className="w-full bg-gray-200 rounded-lg aspect-video flex items-center justify-center overflow-hidden">
+                          {isValidYouTubeUrl(workVideo.video_url || '') ? (
+                            <img
+                              src={`https://img.youtube.com/vi/${workVideo.video_url?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`}
+                              alt={workVideo.video_title || 'Video thumbnail'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = `https://img.youtube.com/vi/${workVideo.video_url?.split('v=')[1]?.split('&')[0]}/hqdefault.jpg`;
+                              }}
+                            />
+                          ) : videoThumbnail ? (
+                            <img
+                              src={videoThumbnail}
+                              alt={workVideo.video_title || 'Video thumbnail'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-center">
+                              <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Play button overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 group-hover:bg-opacity-50 transition-all duration-200">
+                            <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
+                              <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                              </svg>
+                            </div>
                           </div>
                         </div>
-                      )}
-                      
-                      {/* Play button overlay */}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 group-hover:bg-opacity-50 transition-all duration-200">
-                        <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                          <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                          </svg>
-                        </div>
+                        
+                        {/* Video title */}
+                        <p className="mt-2 text-sm font-medium text-gray-900 truncate">
+                          {workVideo.video_title || '作業手順動画'}
+                        </p>
                       </div>
+                    ) : (
+                      <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <svg className="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-gray-600 font-medium">動画なし</p>
+                        <p className="text-gray-500 text-sm mt-1">この作業に関連する動画はありません</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 作業情報 */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-3xl font-bold text-gray-800 mb-6">
+                      作業ID: {work.id}
+                    </h3>
+                    <div className="flex items-center space-x-4 mb-6">
+                      <h4 className="text-2xl font-semibold text-gray-700">
+                        {work.work_title || '作業タイトル'}
+                      </h4>
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(work.status || 0)}`}>
+                        {getStatusText(work.status || 0)}
+                      </span>
                     </div>
                     
-                    {/* Video title */}
-                    <p className="mt-2 text-sm font-medium text-gray-900 truncate">
-                      {workVideo.video_title || '作業手順動画'}
-                    </p>
+                    {/* 作業詳細情報 */}
+                    <div className="space-y-4">
+                    {work.quantity && (
+                      <div>
+                        <span className="text-gray-600 font-medium">数量: </span>
+                        <span className="text-gray-800">{work.quantity}</span>
+                      </div>
+                    )}
+                    {work.delivery_date && (
+                      <div>
+                        <span className="text-gray-600 font-medium">納期: </span>
+                        <span className="text-gray-800">{new Date(work.delivery_date).toLocaleDateString('ja-JP')}</span>
+                      </div>
+                    )}
+                    {work.unit_price && (
+                      <div>
+                        <span className="text-gray-600 font-medium">単価: </span>
+                        <span className="text-gray-800">¥{work.unit_price.toLocaleString()}</span>
+                      </div>
+                    )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <svg className="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-gray-600 font-medium">動画なし</p>
-                    <p className="text-gray-500 text-sm mt-1">この作業に関連する動画はありません</p>
+                  
+                  {/* 各作業の完了ボタン */}
+                  <div className="mt-6">
+                    <button
+                      onClick={() => handleCompleteWork(work.id!)}
+                      className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-medium text-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-3"
+                    >
+                      <CheckCircle className="w-6 h-6" />
+                      <span>この作業を完了</span>
+                    </button>
                   </div>
-                )}
-              </div>
-
-              {/* 作業情報 */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-3xl font-bold text-gray-800 mb-6">
-                  作業ID: {currentWork.id}
-                </h3>
-                <div className="flex items-center space-x-4 mb-6">
-                  <h4 className="text-2xl font-semibold text-gray-700">
-                    {currentWork.work_title || '作業タイトル'}
-                  </h4>
-                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(currentWork.status || 0)}`}>
-                    {getStatusText(currentWork.status || 0)}
-                  </span>
                 </div>
-                
-                {/* 作業詳細情報 */}
-                <div className="space-y-4">
-                {currentWork.quantity && (
-                  <div>
-                    <span className="text-gray-600 font-medium">数量: </span>
-                    <span className="text-gray-800">{currentWork.quantity}</span>
-                  </div>
-                )}
-                {currentWork.delivery_date && (
-                  <div>
-                    <span className="text-gray-600 font-medium">納期: </span>
-                    <span className="text-gray-800">{new Date(currentWork.delivery_date).toLocaleDateString('ja-JP')}</span>
-                  </div>
-                )}
-                {currentWork.unit_price && (
-                  <div>
-                    <span className="text-gray-600 font-medium">単価: </span>
-                    <span className="text-gray-800">¥{currentWork.unit_price.toLocaleString()}</span>
-                  </div>
-                )}
-                </div>
-              </div>
-            </div>
-            
-            {/* 作業完了ボタン */}
-            <div className="mt-8">
-              <button
-                onClick={handleCompleteWork}
-                className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-medium text-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-3"
-              >
-                <CheckCircle className="w-6 h-6" />
-                <span>作業完了</span>
-              </button>
-            </div>
+              );
+            })}
           </div>
           ) : (
             // 作業がない場合の表示（作業待機中）
@@ -360,18 +366,16 @@ const WorkerWorkPage: React.FC = () => {
             </div>
           )}
 
-          {/* QR Code Button - 進行中の作業がない場合のみ表示 */}
-          {!currentWork && (
-            <div className="mt-12">
-              <button
-                onClick={handleQRCodeScan}
-                className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4"
-              >
-                <QrCode className="w-8 h-8" />
-                <span>QRコード読み取り</span>
-              </button>
-            </div>
-          )}
+          {/* QR Code Button - 常に表示 */}
+          <div className="mt-12">
+            <button
+              onClick={handleQRCodeScan}
+              className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4"
+            >
+              <QrCode className="w-8 h-8" />
+              <span>QRコード読み取り</span>
+            </button>
+          </div>
       </div>
 
       {/* Video Player Modal */}
