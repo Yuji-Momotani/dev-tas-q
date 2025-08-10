@@ -40,7 +40,14 @@ export const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
       return;
     }
 
-    video.crossOrigin = 'anonymous';
+    // 本番環境とlocalhost環境を判定
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
+    // 本番環境ではcrossOriginを設定しない（CORSエラー回避）
+    if (!isProduction) {
+      video.crossOrigin = 'anonymous';
+    }
+    
     video.currentTime = 1; // 1秒後のフレームを取得
 
     video.onloadedmetadata = () => {
