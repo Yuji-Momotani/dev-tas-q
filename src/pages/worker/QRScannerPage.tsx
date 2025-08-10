@@ -377,14 +377,6 @@ const QRScannerPage: React.FC = () => {
           >
             戻る
           </button>
-          {!showLinkButton && (
-            <button
-              onClick={() => handleQRDetected('workerid:1,workid:#1')}
-              className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              テストスキャン
-            </button>
-          )}
         </div>
       </div>
 
