@@ -33,6 +33,20 @@ export const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     console.log('🎬 サムネイル生成開始:', videoUrl);
     
+    // デバイス・ブラウザ情報を追加
+    const userAgent = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+    const isMobile = /Mobi|Android/i.test(userAgent);
+    
+    console.log('📱 デバイス情報:', {
+      userAgent,
+      isIOS,
+      isSafari,
+      isMobile,
+      platform: navigator.platform
+    });
+    
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
