@@ -66,6 +66,7 @@ const WorkListPage: React.FC = () => {
         .select(`
           *,
           workers (
+            id,
             name
           )
         `)
@@ -92,6 +93,7 @@ const WorkListPage: React.FC = () => {
         title: work.work_title || '未設定',
         status: work.status || WorkStatus.REQUEST_PLANNED,
         workerName: work.workers?.name || undefined,
+        workerID: work.workers?.id || undefined,
         quantity: work.quantity || undefined,
         unitPrice: work.unit_price || 0,
         deliveryDate: work.delivery_date ? new Date(work.delivery_date) : undefined,
@@ -205,10 +207,8 @@ const WorkListPage: React.FC = () => {
     setSelectedWorker(e.target.value);
   };
 
-  const handleRowClick = (id: string) => {
-    // Remove special characters and spaces from the ID
-    const cleanId = id.split('/')[0].trim();
-    navigate(`/admin/work-detail/${encodeURIComponent(cleanId)}`);
+  const handleRowClick = (id: number) => {
+    navigate(`/admin/work-detail/${id}`);
   };
 
   const handleLogout = async () => {
@@ -583,7 +583,7 @@ const WorkListPage: React.FC = () => {
                     </td>
                     <td 
                       className="border border-gray-300 px-4 py-3 text-sm text-gray-900 cursor-pointer"
-                      onClick={() => handleRowClick(`#${item.id}`)}
+                      onClick={() => handleRowClick(item.id)}
                     >
                       #{item.id} / {item.title}
                     </td>
@@ -594,8 +594,8 @@ const WorkListPage: React.FC = () => {
                       className="border border-gray-300 px-4 py-3 text-sm text-gray-500 cursor-pointer hover:text-blue-600"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (item.workerName) {
-                          navigate(`/admin/worker-detail/${encodeURIComponent(item.workerName)}`);
+                        if (item.workerID) {
+                          navigate(`/admin/worker-detail/${item.workerID}`);
                         }
                       }}
                     >

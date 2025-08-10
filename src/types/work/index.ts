@@ -19,11 +19,13 @@ export interface WorkDetail extends Work {
 }
 
 export interface WorkVideo {
-  id: string;
+  id: number;
   workID: number;
   title: string;
   creator: string;
   createdAt: Date;
+  workTitle?: string;
+  videoUrl?: string;
 }
 
 export interface WorkHistory {

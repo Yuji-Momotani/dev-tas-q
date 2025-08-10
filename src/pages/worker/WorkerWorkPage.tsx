@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, QrCode, LogOut, CheckCircle } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
+import { isValidYouTubeUrl, generateVideoThumbnail } from '../../utils/video';
+import VideoPlayerModal from '../../components/VideoPlayerModal';
 
 type WorkType = Tables<'works'> & {
   work_videos?: Tables<'work_videos'>[];
@@ -11,9 +13,12 @@ type WorkType = Tables<'works'> & {
 const WorkerWorkPage: React.FC = () => {
   const navigate = useNavigate();
   const [currentWork, setCurrentWork] = useState<WorkType | null>(null);
-  const [workVideos, setWorkVideos] = useState<Tables<'work_videos'>[]>([]);
+  const [workVideo, setWorkVideo] = useState<Tables<'work_videos'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [videoThumbnail, setVideoThumbnail] = useState<string>('');
+  const [selectedVideo, setSelectedVideo] = useState<{url: string, title: string} | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 作業者の認証状態と作業データを取得
   useEffect(() => {
@@ -48,7 +53,7 @@ const WorkerWorkPage: React.FC = () => {
           .from('works')
           .select(`
             *,
-            work_videos (
+            work_videos!inner (
               id,
               video_title,
               video_url
@@ -57,6 +62,7 @@ const WorkerWorkPage: React.FC = () => {
           .eq('worker_id', workerData.id)
           .eq('status', 3)
           .is('deleted_at', null)
+          .is('work_videos.deleted_at', null)
           .order('updated_at', { ascending: false })
           .limit(1);
 
@@ -68,7 +74,13 @@ const WorkerWorkPage: React.FC = () => {
 
         if (workData && workData.length > 0) {
           setCurrentWork(workData[0]);
-          setWorkVideos(workData[0].work_videos || []);
+          const video = workData[0].work_videos?.[0] || null;
+          setWorkVideo(video);
+          
+          // サムネイル生成
+          if (video) {
+            generateThumbnailForVideo(video);
+          }
         }
         
       } catch (err) {
@@ -138,6 +150,32 @@ const WorkerWorkPage: React.FC = () => {
     }
   };
 
+  const generateThumbnailForVideo = async (video: Tables<'work_videos'>) => {
+    if (video.video_url && !isValidYouTubeUrl(video.video_url)) {
+      try {
+        const thumbnail = await generateVideoThumbnail(video.video_url);
+        setVideoThumbnail(thumbnail);
+      } catch (error) {
+        console.error('サムネイル生成エラー:', error);
+      }
+    }
+  };
+
+  const handleVideoClick = () => {
+    if (workVideo?.video_url) {
+      setSelectedVideo({
+        url: workVideo.video_url,
+        title: workVideo.video_title || 'Video'
+      });
+      setIsModalOpen(true);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedVideo(null);
+  };
+
   const handleCompleteWork = () => {
     // 配送方法選択画面に遷移
     navigate('/worker/delivery-method');
@@ -198,39 +236,85 @@ const WorkerWorkPage: React.FC = () => {
         {currentWork ? (
           // 進行中の作業がある場合
           <div>
-            {/* 作業手順動画セクション */}
-            {workVideos.length > 0 && (
-              <div className="mb-8">
-                <div className="w-full bg-gray-200 rounded-lg aspect-video flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-600 text-sm">{workVideos[0].video_title || '作業手順動画'}</p>
-                    <p className="text-gray-500 text-xs mt-1">クリックで再生</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* 作業情報 */}
+            {/* 作業情報（動画含む） */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                作業ID: {currentWork.id}
-              </h2>
-              <div className="flex items-center space-x-4 mb-8">
-                <h3 className="text-2xl font-semibold text-gray-700">
-                  {currentWork.work_title || '作業タイトル'}
-                </h3>
-                <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(currentWork.status || 0)}`}>
-                  {getStatusText(currentWork.status || 0)}
-                </span>
+              {/* 関連動画セクション */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">関連動画</h3>
+                {workVideo ? (
+                  <div
+                    className="relative cursor-pointer group max-w-md"
+                    onClick={handleVideoClick}
+                  >
+                    <div className="w-full bg-gray-200 rounded-lg aspect-video flex items-center justify-center overflow-hidden">
+                      {isValidYouTubeUrl(workVideo.video_url || '') ? (
+                        <img
+                          src={`https://img.youtube.com/vi/${workVideo.video_url?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`}
+                          alt={workVideo.video_title || 'Video thumbnail'}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://img.youtube.com/vi/${workVideo.video_url?.split('v=')[1]?.split('&')[0]}/hqdefault.jpg`;
+                          }}
+                        />
+                      ) : videoThumbnail ? (
+                        <img
+                          src={videoThumbnail}
+                          alt={workVideo.video_title || 'Video thumbnail'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Play button overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 group-hover:bg-opacity-50 transition-all duration-200">
+                        <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Video title */}
+                    <p className="mt-2 text-sm font-medium text-gray-900 truncate">
+                      {workVideo.video_title || '作業手順動画'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <svg className="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-gray-600 font-medium">動画なし</p>
+                    <p className="text-gray-500 text-sm mt-1">この作業に関連する動画はありません</p>
+                  </div>
+                )}
               </div>
-              
-              {/* 作業詳細情報 */}
-              <div className="space-y-4">
+
+              {/* 作業情報 */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-3xl font-bold text-gray-800 mb-6">
+                  作業ID: {currentWork.id}
+                </h3>
+                <div className="flex items-center space-x-4 mb-6">
+                  <h4 className="text-2xl font-semibold text-gray-700">
+                    {currentWork.work_title || '作業タイトル'}
+                  </h4>
+                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(currentWork.status || 0)}`}>
+                    {getStatusText(currentWork.status || 0)}
+                  </span>
+                </div>
+                
+                {/* 作業詳細情報 */}
+                <div className="space-y-4">
                 {currentWork.quantity && (
                   <div>
                     <span className="text-gray-600 font-medium">数量: </span>
@@ -249,6 +333,7 @@ const WorkerWorkPage: React.FC = () => {
                     <span className="text-gray-800">¥{currentWork.unit_price.toLocaleString()}</span>
                   </div>
                 )}
+                </div>
               </div>
             </div>
             
@@ -288,6 +373,13 @@ const WorkerWorkPage: React.FC = () => {
             </div>
           )}
       </div>
+
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        video={selectedVideo}
+      />
 
       {/* Footer */}
       <footer className="p-4 text-right">

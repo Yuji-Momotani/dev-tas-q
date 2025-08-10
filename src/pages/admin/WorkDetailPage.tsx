@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
-import { Edit, Play, Save, X } from 'lucide-react';
+import { Edit, Save, X, Video } from 'lucide-react';
+import VideoPlayerModal from '../../components/VideoPlayerModal';
+import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '../../utils/video';
+import { WorkVideo } from '../../types/work';
 
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
   workers?: {
@@ -30,11 +33,16 @@ const WorkDetailPage: React.FC = () => {
     unit_price: number | null;
     delivery_date: string | null;
   } | null>(null);
+  const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<number, string>>({});
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     if (id) {
       fetchWorkDetail();
       fetchWorkers();
+      fetchWorkVideos();
     }
   }, [id]);
 
@@ -42,9 +50,6 @@ const WorkDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-
-      // URLパラメータからIDを取得（#を除去）
-      const cleanId = decodeURIComponent(id).replace('#', '');
       
       const { data, error } = await supabase
         .from('works')
@@ -55,7 +60,7 @@ const WorkDetailPage: React.FC = () => {
             name
           )
         `)
-        .eq('id', cleanId)
+        .eq('id', Number(id))
         .is('deleted_at', null)
         .single();
 
@@ -112,6 +117,71 @@ const WorkDetailPage: React.FC = () => {
     }
   };
 
+  // 作業に紐づく動画データを取得
+  const fetchWorkVideos = async () => {
+    try {
+      if (!id) return;
+      
+      const { data, error } = await supabase
+        .from('work_videos')
+        .select(`
+          id,
+          video_title,
+          video_url,
+          created_at,
+          created_admin_id,
+          work_id,
+          admins (
+            name
+          )
+        `)
+        .eq('work_id', Number(id))
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      // データをWorkVideo型に変換
+      const videos: WorkVideo[] = (data || []).map((video: any) => ({
+        id: video.id,
+        workID: video.work_id || 0,
+        title: video.video_title || '無題',
+        creator: video.admins?.name || '不明',
+        createdAt: video.created_at ? new Date(video.created_at) : new Date(),
+        videoUrl: video.video_url || undefined
+      }));
+
+      setWorkVideos(videos);
+
+      // アップロード動画のサムネイルを生成
+      videos.forEach(async (video) => {
+        if (video.videoUrl && !isValidYouTubeUrl(video.videoUrl)) {
+          try {
+            const thumbnailDataUrl = await generateVideoThumbnail(video.videoUrl);
+            setVideoThumbnails(prev => ({
+              ...prev,
+              [video.id]: thumbnailDataUrl
+            }));
+          } catch (error) {
+            console.warn(`動画ID ${video.id} のサムネイル生成に失敗:`, error);
+          }
+        }
+      });
+    } catch (err) {
+      console.error('作業動画取得エラー:', err);
+    }
+  };
+
   const handleLogout = () => {
     navigate('/admin/login');
   };
@@ -126,6 +196,20 @@ const WorkDetailPage: React.FC = () => {
 
   const handleWorkVideos = () => {
     navigate('/admin/work-videos');
+  };
+
+  const handlePlayVideo = (video: WorkVideo) => {
+    if (video.videoUrl) {
+      setSelectedVideo({ url: video.videoUrl, title: video.title });
+      setShowVideoModal(true);
+    } else {
+      alert('動画URLが設定されていません');
+    }
+  };
+
+  const handleCloseVideoModal = () => {
+    setShowVideoModal(false);
+    setSelectedVideo(null);
   };
 
   const handleEdit = () => {
@@ -150,7 +234,6 @@ const WorkDetailPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const cleanId = decodeURIComponent(id).replace('#', '');
 
       const updateData = {
         work_title: editedItem.work_title,
@@ -164,7 +247,7 @@ const WorkDetailPage: React.FC = () => {
       const { error } = await supabase
         .from('works')
         .update(updateData)
-        .eq('id', cleanId)
+        .eq('id', Number(id))
         .is('deleted_at', null);
 
       if (error) {
@@ -527,11 +610,87 @@ const WorkDetailPage: React.FC = () => {
             {/* Right Column - Work Video */}
             <div className="flex flex-col">
               <h3 className="text-lg font-medium text-gray-900 mb-4">作業手順動画</h3>
-              <div className="bg-gray-300 aspect-video rounded-md flex items-center justify-center relative group cursor-pointer hover:bg-gray-400 transition-colors">
-                <div className="flex items-center justify-center w-16 h-16 bg-white bg-opacity-80 rounded-full group-hover:bg-opacity-100 transition-all">
-                  <Play size={24} className="text-gray-600 ml-1" />
+              {workVideos.length > 0 ? (
+                <div className="space-y-4">
+                  {workVideos.map((video) => (
+                    <div key={video.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">{video.title}</h4>
+                      <div 
+                        className="aspect-video bg-gray-200 rounded-md overflow-hidden relative group cursor-pointer"
+                        onClick={() => handlePlayVideo(video)}
+                      >
+                        {video.videoUrl ? (
+                          <>
+                            {isValidYouTubeUrl(video.videoUrl) ? (
+                              // YouTube動画の場合
+                              <img 
+                                src={getYouTubeThumbnail(video.videoUrl) || ''}
+                                alt={video.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // エラー時はデフォルトアイコンに戻す
+                                  const target = e.currentTarget;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    const fallback = parent.querySelector('.fallback-icon');
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }
+                                }}
+                              />
+                            ) : videoThumbnails[video.id] ? (
+                              // アップロード動画でサムネイルが生成済みの場合
+                              <img 
+                                src={videoThumbnails[video.id]}
+                                alt={video.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              // アップロード動画でサムネイル生成中の場合
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                <div className="animate-pulse">
+                                  <Video size={32} className="text-gray-400" />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* 再生ボタンオーバーレイ */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center justify-center w-16 h-16 bg-white bg-opacity-90 rounded-full">
+                                  <svg className="w-8 h-8 text-gray-700 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="fallback-icon hidden w-full h-full flex items-center justify-center bg-gray-200">
+                              <Video size={32} className="text-gray-400" />
+                            </div>
+                          </>
+                        ) : (
+                          // URLがない場合
+                          <div className="w-full h-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+                            <Video size={32} className="text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        作成者: {video.creator} | 作成日: {video.createdAt.toLocaleDateString('ja-JP')}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="bg-gray-100 aspect-video rounded-md flex items-center justify-center">
+                  <div className="text-center">
+                    <Video size={48} className="text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">動画なし</p>
+                    <p className="text-gray-400 text-xs mt-1">この作業には動画が登録されていません</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -540,6 +699,13 @@ const WorkDetailPage: React.FC = () => {
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
       </footer>
+
+      {/* 動画再生モーダル */}
+      <VideoPlayerModal
+        isOpen={showVideoModal}
+        onClose={handleCloseVideoModal}
+        video={selectedVideo}
+      />
     </div>
   );
 };
