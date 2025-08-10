@@ -62,9 +62,16 @@ export const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
     console.log('🌍 環境判定:', isProduction ? '本番環境' : 'ローカル環境');
     console.log('🌍 ホスト名:', window.location.hostname);
     
-    // crossOriginは常に設定（本番環境でもSupabase StorageがCORSを要求するため）
-    video.crossOrigin = 'anonymous';
-    console.log('🔒 crossOrigin設定: anonymous');
+    if (isIOS) {
+			// iOS対応: プリロード設定
+      video.preload = 'metadata';
+      video.playsInline = true;
+      console.log('📱 iOS設定: preload=metadata, playsInline=true');
+    } else {
+			// iOS対応: iOSではcrossOriginを設定しない
+			video.crossOrigin = 'anonymous';
+      console.log('🔒 crossOrigin設定: anonymous');
+		}
     
     // タイムアウト設定
     const timeoutId = setTimeout(() => {

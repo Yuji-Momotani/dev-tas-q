@@ -53,6 +53,8 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
               controls
               className="w-full max-h-[60vh]"
               autoPlay
+              playsInline
+              preload="metadata"
             >
               お使いのブラウザは動画再生に対応していません。
             </video>
