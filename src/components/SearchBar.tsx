@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
+import { supabase } from '../utils/supabase';
 
 interface SearchBarProps {
   onSearch: (searchParams: {
@@ -17,6 +18,31 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
   const [endDate, setEndDate] = useState('');
   const [selectedSkill, setSelectedSkill] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
+  const [skillOptions, setSkillOptions] = useState<string[]>([]);
+
+  // m_rankテーブルからrank値を取得
+  useEffect(() => {
+    const fetchSkillOptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('m_rank')
+          .select('rank')
+          .order('rank');
+        
+        if (error) {
+          console.error('スキルオプション取得エラー:', error);
+          return;
+        }
+        
+        const ranks = data?.map(item => item.rank).filter(Boolean) || [];
+        setSkillOptions(ranks);
+      } catch (err) {
+        console.error('スキルオプション取得エラー:', err);
+      }
+    };
+
+    fetchSkillOptions();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,10 +92,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">全て</option>
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-          <option value="D">D</option>
+          {skillOptions.map((rank) => (
+            <option key={rank} value={rank}>
+              {rank}
+            </option>
+          ))}
         </select>
       </div>
 
