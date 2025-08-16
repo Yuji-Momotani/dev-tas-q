@@ -506,18 +506,28 @@ const WorkDetailPage: React.FC = () => {
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">作業者名</label>
                 <div className="ml-8 flex-1">
                   {isEditing ? (
-                    <select
-                      value={editedItem.worker_id || ''}
-                      onChange={(e) => handleInputChange('worker_id', parseInt(e.target.value) || null)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                    >
-                      <option value="">選択してください</option>
-                      {workers.map((worker) => (
-                        <option key={worker.id} value={worker.id}>
-                          {worker.name || '名前未設定'}
-                        </option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={editedItem.worker_id || ''}
+                        onChange={(e) => handleInputChange('worker_id', parseInt(e.target.value) || null)}
+                        disabled={workItem.status === WorkStatus.IN_PROGRESS}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 ${
+                          workItem.status === WorkStatus.IN_PROGRESS ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <option value="">選択してください</option>
+                        {workers.map((worker) => (
+                          <option key={worker.id} value={worker.id}>
+                            {worker.name || '名前未設定'}
+                          </option>
+                        ))}
+                      </select>
+                      {workItem.status === WorkStatus.IN_PROGRESS && (
+                        <div className="text-xs text-red-500 mt-1">
+                          ※ 進行中の作業は作業者名を変更できません
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-lg text-gray-900">{workItem.workers?.name || '-'}</div>
                   )}
