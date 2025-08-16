@@ -9,6 +9,7 @@ export interface Work {
   deliveryDate?: Date;
   workerID?: number;
   workerName?: string;
+  workerUnitPriceRatio?: number;
 }
 
 export interface WorkDetail extends Work {
@@ -38,6 +39,7 @@ export interface WorkHistory {
   deliveryDate?: Date;
 }
 
-export const calculateTotalCost = (quantity: number, unitPrice: number): number => {
-  return quantity * unitPrice;
+export const calculateTotalCost = (quantity: number, unitPrice: number, unitPriceRatio: number = 1.0): number => {
+  // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
+  return Math.floor(quantity * unitPrice * unitPriceRatio);
 };

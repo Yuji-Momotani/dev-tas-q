@@ -12,6 +12,7 @@ type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
   workers?: {
     id: number;
     name: string | null;
+    unit_price_ratio: number | null;
   } | null;
 };
 
@@ -57,7 +58,8 @@ const WorkDetailPage: React.FC = () => {
           *,
           workers (
             id,
-            name
+            name,
+            unit_price_ratio
           )
         `)
         .eq('id', Number(id))
@@ -316,10 +318,11 @@ const WorkDetailPage: React.FC = () => {
     }).replace(/\//g, '.');
   };
 
-  // 費用計算
+  // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
   const calculateTotalCost = (): number => {
     if (!editedItem?.quantity || !editedItem?.unit_price) return 0;
-    return editedItem.quantity * editedItem.unit_price;
+    const unitPriceRatio = workItem?.workers?.unit_price_ratio || 1.0;
+    return Math.floor(editedItem.quantity * editedItem.unit_price * unitPriceRatio);
   };
 
   if (loading) {
@@ -559,6 +562,16 @@ const WorkDetailPage: React.FC = () => {
                 </div>
               </div>
               
+              {/* 単価率 - 編集不可（作業者に紐づく） */}
+              <div className="border-b border-gray-200 pb-4 flex items-center">
+                <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">単価率</label>
+                <div className="ml-8 flex-1">
+                  <div className="text-lg text-gray-900">
+                    {(workItem?.workers?.unit_price_ratio || 1.0).toFixed(1)}
+                  </div>
+                </div>
+              </div>
+              
               {/* 費用 - 編集不可（自動計算のため） */}
               <div className="border-b border-gray-200 pb-4 flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">費用</label>
@@ -567,9 +580,14 @@ const WorkDetailPage: React.FC = () => {
                     ¥{calculateTotalCost().toLocaleString()}
                   </div>
                   {isEditing && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      ※ 数量 × 単価で自動計算されます
-                    </div>
+										<>
+											<div className="text-xs text-gray-500 mt-1">
+												※ 数量 × 単価 × 単価率で自動計算されます
+											</div>
+											<div className="text-xs text-gray-500 mt-1">
+												※ 小数点は切捨て
+											</div>
+										</>
                   )}
                 </div>
               </div>

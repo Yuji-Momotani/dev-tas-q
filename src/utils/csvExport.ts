@@ -51,7 +51,7 @@ export const exportWorkListCSV = (workItems: Work[]): void => {
     item.workerName || '-',
     item.quantity?.toString() || '-',
     item.unitPrice ? `¥${item.unitPrice}` : '-',
-    (item.quantity && item.unitPrice) ? `¥${(item.quantity * item.unitPrice).toLocaleString()}` : '-',
+    (item.quantity && item.unitPrice) ? `¥${Math.floor(item.quantity * item.unitPrice * (item.workerUnitPriceRatio || 1.0)).toLocaleString()}` : '-',
     item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'
   ]);
 
