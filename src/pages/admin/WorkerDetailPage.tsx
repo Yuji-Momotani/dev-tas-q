@@ -4,6 +4,7 @@ import { Edit, Save, X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { WorkerDetail } from '../../types/worker';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
+import GroupSelector from '../../components/GroupSelector';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
 
@@ -295,6 +296,16 @@ const WorkerDetailPage: React.FC = () => {
           [field]: value
         });
       }
+    }
+  };
+
+  const handleGroupChange = (groupName: string, groupId: number | null) => {
+    if (editedWorker) {
+      setEditedWorker({
+        ...editedWorker,
+        groupID: groupId || undefined,
+        group: groupId ? { id: groupId, name: groupName } : undefined
+      });
     }
   };
 
@@ -607,14 +618,12 @@ const WorkerDetailPage: React.FC = () => {
                   <label className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">グループ</label>
                   <div className="ml-4 flex-1">
                     {isEditing ? (
-                      <select
-                        value={editedWorker.groupID?.toString() || ''}
-                        onChange={(e) => handleInputChange('groupID', parseInt(e.target.value) || undefined)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                      >
-                        <option value="">選択してください</option>
-                        {/* TODO: グループマスタから取得 */}
-                      </select>
+                      <GroupSelector
+                        value={editedWorker.group?.name || ''}
+                        groupId={editedWorker.groupID}
+                        onChange={handleGroupChange}
+                        placeholder="グループを選択または入力してください"
+                      />
                     ) : (
                       <div className="text-sm text-gray-900">{editedWorker.group?.name || '-'}</div>
                     )}

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { inviteWorkerByEmail, supabaseAdmin } from '../utils/supabaseAdmin';
+import type { Database } from '../types/database.types';
+import GroupSelector from './GroupSelector';
+
 
 interface WorkerCreateModalProps {
   isOpen: boolean;
@@ -16,6 +19,8 @@ interface WorkerFormData {
   unitPriceRatio: number;
   skillRankId: string;
   skillComment: string;
+  groupId: string;
+  groupName: string;
 }
 
 const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, onSave }) => {
@@ -26,14 +31,15 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
     unitPriceRatio: 1.0,
     skillRankId: '',
     skillComment: '',
+    groupId: '',
+    groupName: '',
   });
 
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [skillOptions, setSkillOptions] = useState<{ id: string; rank: string }[]>([]);
 
-  // m_rankテーブルからスキル選択肢を取得
+  // スキル選択肢を取得
   useEffect(() => {
     const fetchSkillOptions = async () => {
       try {
@@ -58,6 +64,7 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
     }
   }, [isOpen]);
 
+
   const handleInputChange = (field: keyof WorkerFormData, value: string | number) => {
     setFormData(prev => ({
       ...prev,
@@ -68,6 +75,14 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleGroupChange = (groupName: string, groupId: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      groupName,
+      groupId: groupId?.toString() || ''
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -118,6 +133,7 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
         email: formData.email,
         next_visit_date: formData.nextVisitDate || null,
         unit_price_ratio: formData.unitPriceRatio || null,
+        group_id: formData.groupId ? parseInt(formData.groupId) : null,
         auth_user_id: authUserId,
       };
 
@@ -191,6 +207,8 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
       unitPriceRatio: 1.0,
       skillRankId: '',
       skillComment: '',
+      groupId: '',
+      groupName: '',
     });
     setErrors({});
     onClose();
@@ -314,7 +332,7 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
           </div>
 
           {/* スキルコメント */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="workerSkillComment" className="block text-sm font-medium text-gray-700 mb-2">
               スキルコメント
             </label>
@@ -325,6 +343,19 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="スキルに関するコメントを入力してください"
               rows={3}
+            />
+          </div>
+
+          {/* グループ */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              グループ
+            </label>
+            <GroupSelector
+              value={formData.groupName}
+              groupId={formData.groupId ? parseInt(formData.groupId) : undefined}
+              onChange={handleGroupChange}
+              placeholder="グループを選択または入力してください"
             />
           </div>
 

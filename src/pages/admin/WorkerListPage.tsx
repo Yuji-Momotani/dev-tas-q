@@ -110,7 +110,7 @@ const WorkerListPage: React.FC = () => {
       setLoading(true);
       setError('');
 
-      // workersテーブルから基本情報を取得し、関連するworks、worker_skills、m_rankをJOIN
+      // workersテーブルから基本情報を取得し、関連するworks、worker_skills、m_rank、groupsをJOIN
       const { data, error } = await supabase
         .from('workers')
         .select(`
@@ -130,6 +130,9 @@ const WorkerListPage: React.FC = () => {
             m_rank (
               rank
             )
+          ),
+          groups!left (
+            name
           )
         `)
         .is('deleted_at', null)
@@ -169,6 +172,9 @@ const WorkerListPage: React.FC = () => {
           ? worker.worker_skills[0].m_rank.rank 
           : null;
 
+        // グループ情報を取得
+        const groupName = worker.groups?.name || null;
+
         return {
           id: worker.id,
           name: worker.name || '',
@@ -183,7 +189,7 @@ const WorkerListPage: React.FC = () => {
           inProgressWork,
           plannedWork,
           skill,
-          groupName: null // TODO: groupsテーブルと連携時に実装
+          groupName
         };
       });
 

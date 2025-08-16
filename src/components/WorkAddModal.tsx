@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, Plus, ChevronDown } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import type { Database } from '../types/database.types';
 import { WorkStatus } from '../constants/workStatus';
 
 type Worker = Database['public']['Tables']['workers']['Row'];
-type Group = Database['public']['Tables']['groups']['Row'];
 
 interface WorkAddModalProps {
   isOpen: boolean;
@@ -16,7 +15,6 @@ interface WorkAddModalProps {
 const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
-    group: '',
     status: 0, // 0: 未選択, 1: 依頼予定, 2: 依頼中, 3: 進行中, 4: 配送中, 5: 集荷依頼中, 6: 持込待ち, 7: 完了
     assignee: '',
     assigneeId: null as number | null,
@@ -28,45 +26,15 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [groupInput, setGroupInput] = useState('');
-  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
-  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
 
-  // 作業者一覧とグループ一覧を取得
+  // 作業者一覧を取得
   useEffect(() => {
     if (isOpen) {
       fetchWorkers();
-      fetchGroups();
     }
   }, [isOpen]);
-
-  // グループ入力でフィルタリング
-  useEffect(() => {
-    const filtered = groups.filter(group => 
-      group.name?.toLowerCase().includes(groupInput.toLowerCase())
-    );
-    setFilteredGroups(filtered);
-  }, [groupInput, groups]);
-
-  // 外クリック時にドロップダウンを閉じる
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.group-selector')) {
-        setShowGroupDropdown(false);
-      }
-    };
-
-    if (showGroupDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [showGroupDropdown]);
 
   const fetchWorkers = async () => {
     try {
@@ -86,20 +54,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     }
   };
 
-  const fetchGroups = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('groups')
-        .select('*')
-        .is('deleted_at', null)
-        .order('name');
-
-      if (error) throw error;
-      setGroups(data || []);
-    } catch (err) {
-      console.error('グループ一覧取得エラー:', err);
-    }
-  };
 
   const handleInputChange = (field: string, value: string | number) => {
     const updatedData = {
@@ -136,70 +90,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     }
   };
 
-  const handleGroupInputChange = (value: string) => {
-    setGroupInput(value);
-    setFormData(prev => ({ ...prev, group: value }));
-    setShowGroupDropdown(true);
-  };
-
-  const handleGroupSelect = (groupName: string) => {
-    setGroupInput(groupName);
-    setFormData(prev => ({ ...prev, group: groupName }));
-    setShowGroupDropdown(false);
-  };
-
-  const handleCreateGroup = async () => {
-    if (!groupInput.trim()) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('groups')
-        .insert([{ name: groupInput.trim() }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // グループ一覧を再取得
-      await fetchGroups();
-      
-      // 新しく作成したグループを選択
-      setFormData(prev => ({ ...prev, group: groupInput }));
-      setShowGroupDropdown(false);
-      
-      alert('新しいグループが作成されました。');
-    } catch (err) {
-      console.error('グループ作成エラー:', err);
-      alert('グループの作成に失敗しました。');
-    }
-  };
-
-  const handleDeleteGroup = async (groupId: number, groupName: string) => {
-    if (!confirm(`グループ「${groupName}」を削除しますか？`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('groups')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', groupId);
-
-      if (error) throw error;
-
-      // グループ一覧を再取得
-      await fetchGroups();
-      
-      // 削除したグループが選択されていた場合はクリア
-      if (formData.group === groupName) {
-        setFormData(prev => ({ ...prev, group: '' }));
-        setGroupInput('');
-      }
-      
-      alert('グループが削除されました。');
-    } catch (err) {
-      console.error('グループ削除エラー:', err);
-      alert('グループの削除に失敗しました。');
-    }
-  };
 
   const validateForm = async (): Promise<boolean> => {
     const newErrors: { [key: string]: string } = {};
@@ -263,7 +153,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
   const handleClose = () => {
     setFormData({
       name: '',
-      group: '',
       status: 0,
       assignee: '',
       assigneeId: null,
@@ -273,8 +162,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       deliveryDate: ''
     });
     setErrors({});
-    setGroupInput('');
-    setShowGroupDropdown(false);
     onClose();
   };
 
@@ -313,81 +200,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
             {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
           </div>
 
-          {/* グループ */}
-          <div className="relative group-selector">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              グループ
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={groupInput}
-                onChange={(e) => handleGroupInputChange(e.target.value)}
-                onFocus={() => setShowGroupDropdown(true)}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="グループを選択または入力してください"
-              />
-              <button
-                type="button"
-                onClick={() => setShowGroupDropdown(!showGroupDropdown)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
-            </div>
-            
-            {showGroupDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                {/* 新規作成オプション */}
-                {groupInput && !filteredGroups.some(g => g.name === groupInput) && (
-                  <div
-                    onClick={handleCreateGroup}
-                    className="px-3 py-2 hover:bg-green-50 cursor-pointer border-b border-gray-100 flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4 text-green-600" />
-                    <span className="text-green-600">「{groupInput}」を新規作成</span>
-                  </div>
-                )}
-                
-                {/* 既存グループ一覧 */}
-                {filteredGroups.length > 0 ? (
-                  filteredGroups.map((group) => (
-                    <div
-                      key={group.id}
-                      className="px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group"
-                    >
-                      <span
-                        onClick={() => handleGroupSelect(group.name || '')}
-                        className="flex-1"
-                      >
-                        {group.name}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteGroup(group.id, group.name || '');
-                        }}
-                        className="ml-2 p-1 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="グループを削除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))
-                ) : groupInput && (
-                  <div className="px-3 py-2 text-gray-500 text-sm">
-                    該当するグループがありません
-                  </div>
-                )}
-                
-                {!groupInput && groups.length === 0 && (
-                  <div className="px-3 py-2 text-gray-500 text-sm">
-                    グループがありません
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
           {/* 進捗 (必須) */}
           <div>
