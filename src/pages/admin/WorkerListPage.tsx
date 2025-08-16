@@ -13,8 +13,16 @@ const WorkerListPage: React.FC = () => {
   const navigate = useNavigate();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [searchParams, setSearchParams] = useState({
+    query: '',
+    startDate: '',
+    endDate: '',
+    selectedSkill: '',
+    selectedGroup: ''
+  });
   // 通達実施モーダル関連の状態
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -47,9 +55,54 @@ const WorkerListPage: React.FC = () => {
     checkAuthentication();
   }, [checkAuthentication]);
 
+  // 検索機能の実装
+  const handleSearch = (params: { query: string; startDate: string; endDate: string; selectedSkill: string; selectedGroup: string }) => {
+    setSearchParams(params);
+    
+    let filtered = workers;
+    
+    // フリーワード検索（作業者名、着手中作業）
+    if (params.query.trim()) {
+      const query = params.query.toLowerCase();
+      filtered = filtered.filter(worker => 
+        (worker.name?.toLowerCase().includes(query) || false) ||
+        (worker.inProgressWork?.toLowerCase().includes(query) || false)
+      );
+    }
+    
+    // 次回来社日の範囲検索
+    if (params.startDate || params.endDate) {
+      filtered = filtered.filter(worker => {
+        if (!worker.nextVisitDate) return false;
+        
+        const visitDate = new Date(worker.nextVisitDate);
+        const start = params.startDate ? new Date(params.startDate) : null;
+        const end = params.endDate ? new Date(params.endDate) : null;
+        
+        if (start && visitDate < start) return false;
+        if (end && visitDate > end) return false;
+        
+        return true;
+      });
+    }
+    
+    // スキル検索
+    if (params.selectedSkill) {
+      filtered = filtered.filter(worker => worker.skill === params.selectedSkill);
+    }
+    
+    // グループ検索
+    if (params.selectedGroup) {
+      filtered = filtered.filter(worker => worker.groupName === params.selectedGroup);
+    }
+    
+    setFilteredWorkers(filtered);
+    setCheckedItems(new Set());
+  };
+
   // ヘッダーチェックボックスの状態を計算
-  const isAllChecked = workers.length > 0 && checkedItems.size === workers.length;
-  const isIndeterminate = checkedItems.size > 0 && checkedItems.size < workers.length;
+  const isAllChecked = filteredWorkers.length > 0 && checkedItems.size === filteredWorkers.length;
+  const isIndeterminate = checkedItems.size > 0 && checkedItems.size < filteredWorkers.length;
 
   // 作業者データを取得
   const fetchWorkers = async () => {
@@ -135,6 +188,7 @@ const WorkerListPage: React.FC = () => {
       });
 
       setWorkers(workerList);
+      setFilteredWorkers(workerList);
     } catch (err) {
       console.error('作業者データ取得エラー:', err);
       setError('作業者データの取得に失敗しました');
@@ -158,8 +212,8 @@ const WorkerListPage: React.FC = () => {
       // 1行でもチェックが入っている場合は全て解除
       setCheckedItems(new Set());
     } else {
-      // 全てにチェックを入れる
-      const allIds = new Set(workers.map(worker => worker.id.toString()));
+      // 全てにチェックを入れる（フィルタされた結果に対して）
+      const allIds = new Set(filteredWorkers.map(worker => worker.id.toString()));
       setCheckedItems(allIds);
     }
   };
@@ -210,6 +264,13 @@ const WorkerListPage: React.FC = () => {
     // 作業者作成後にデータを再取得
     fetchWorkers();
   };
+
+  // workersが更新されたら検索を再実行
+  useEffect(() => {
+    if (workers.length > 0) {
+      handleSearch(searchParams);
+    }
+  }, [workers]);
   
   const handleNotification = () => {
     if (checkedItems.size === 0) {
@@ -330,7 +391,7 @@ const WorkerListPage: React.FC = () => {
               通達実施
             </button>
             
-            <SearchBar onSearch={() => {}} />
+            <SearchBar onSearch={handleSearch} />
             
             <button
               onClick={handleExportCSV}
@@ -385,7 +446,7 @@ const WorkerListPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {workers.map((worker) => (
+                  {filteredWorkers.map((worker) => (
                     <tr
                       key={worker.id}
                       className="hover:bg-gray-50 cursor-pointer"
