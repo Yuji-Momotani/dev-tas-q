@@ -19,8 +19,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
   const [selectedSkill, setSelectedSkill] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
   const [skillOptions, setSkillOptions] = useState<string[]>([]);
+  const [groupOptions, setGroupOptions] = useState<{ id: number; name: string }[]>([]);
 
-  // m_rankテーブルからrank値を取得
+  // m_rankテーブルからrank値とgroupsテーブルからグループ一覧を取得
   useEffect(() => {
     const fetchSkillOptions = async () => {
       try {
@@ -41,7 +42,27 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
       }
     };
 
+    const fetchGroupOptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('groups')
+          .select('id, name')
+          .is('deleted_at', null)
+          .order('name');
+        
+        if (error) {
+          console.error('グループオプション取得エラー:', error);
+          return;
+        }
+        
+        setGroupOptions(data || []);
+      } catch (err) {
+        console.error('グループオプション取得エラー:', err);
+      }
+    };
+
     fetchSkillOptions();
+    fetchGroupOptions();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -108,9 +129,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">全て</option>
-          <option value="グループAA">グループAA</option>
-          <option value="グループBA">グループBA</option>
-          <option value="グループ3B">グループ3B</option>
+          {groupOptions.map((group) => (
+            <option key={group.id} value={group.name || ''}>
+              {group.name || '名称未設定'}
+            </option>
+          ))}
         </select>
       </div>
     </form>
