@@ -124,7 +124,7 @@ const WorkerListPage: React.FC = () => {
           birthDate: worker.birthday ? new Date(worker.birthday) : undefined,
           address: worker.address || undefined,
           nextVisitDate: worker.next_visit_date ? new Date(worker.next_visit_date) : undefined,
-          unitPrice: worker.unit_price || undefined,
+          unitPriceRatio: worker.unit_price_ratio || undefined,
           groupID: worker.group_id || undefined,
           lastWorkDate: lastWorkDate ? new Date(lastWorkDate) : undefined,
           inProgressWork,

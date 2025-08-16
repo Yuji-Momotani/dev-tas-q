@@ -6,7 +6,7 @@ export interface Worker {
   birthDate?: Date;
   address?: string;
   nextVisitDate?: Date;
-  unitPrice?: number;
+  unitPriceRatio?: number;
   groupID?: number;
   lastWorkDate?: Date;
   inProgressWork?: string;

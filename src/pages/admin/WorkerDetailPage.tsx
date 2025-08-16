@@ -115,7 +115,7 @@ const WorkerDetailPage: React.FC = () => {
         birthDate: worker.birthday ? new Date(worker.birthday) : undefined,
         address: worker.address || undefined,
         nextVisitDate: worker.next_visit_date ? new Date(worker.next_visit_date) : undefined,
-        unitPrice: worker.unit_price || undefined,
+        unitPriceRatio: worker.unit_price_ratio || undefined,
         groupID: worker.group_id || undefined,
         group: worker.groups ? {
           id: worker.group_id || 0,
@@ -190,7 +190,7 @@ const WorkerDetailPage: React.FC = () => {
           birthday: editedWorker.birthDate ? editedWorker.birthDate.toISOString().split('T')[0] : null,
           address: editedWorker.address || null,
           next_visit_date: editedWorker.nextVisitDate ? editedWorker.nextVisitDate.toISOString().split('T')[0] : null,
-          unit_price: editedWorker.unitPrice || null,
+          unit_price_ratio: editedWorker.unitPriceRatio || null,
           group_id: editedWorker.groupID || null,
           updated_at: new Date().toISOString()
         })
@@ -447,20 +447,27 @@ const WorkerDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 単価 */}
+              {/* 単価率 */}
               <div className="border-b border-gray-200 pb-4 flex items-center">
-                <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">単価</label>
+                <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">単価率</label>
                 <div className="ml-8 flex-1">
                   {isEditing ? (
                     <input
                       type="number"
-                      value={editedWorker.unitPrice || ''}
-                      onChange={(e) => handleInputChange('unitPrice', parseInt(e.target.value) || 0)}
+                      value={editedWorker.unitPriceRatio ? editedWorker.unitPriceRatio.toFixed(1) : ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (!isNaN(value) && value >= 0 && value <= 999.9) {
+                          handleInputChange('unitPriceRatio', Math.round(value * 10) / 10);
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                       min="0"
+                      max="999.9"
+                      step="0.1"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">{editedWorker.unitPrice ? `¥${editedWorker.unitPrice}` : '-'}</div>
+                    <div className="text-lg text-gray-900">{editedWorker.unitPriceRatio ? `${editedWorker.unitPriceRatio.toFixed(1)}` : '-'}</div>
                   )}
                 </div>
               </div>

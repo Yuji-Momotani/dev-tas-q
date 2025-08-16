@@ -13,7 +13,7 @@ interface WorkerFormData {
   name: string;
   email: string;
   nextVisitDate: string;
-  unitPrice: number;
+  unitPriceRatio: number;
 }
 
 const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, onSave }) => {
@@ -21,7 +21,7 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
     name: '',
     email: '',
     nextVisitDate: '',
-    unitPrice: 0,
+    unitPriceRatio: 1.0,
   });
 
   const [loading, setLoading] = useState(false);
@@ -88,7 +88,7 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
         name: formData.name,
         email: formData.email,
         next_visit_date: formData.nextVisitDate || null,
-        unit_price: formData.unitPrice || null,
+        unit_price_ratio: formData.unitPriceRatio || null,
         auth_user_id: authUserId,
       };
 
@@ -139,7 +139,7 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
       name: '',
       email: '',
       nextVisitDate: '',
-      unitPrice: 0,
+      unitPriceRatio: 1.0,
     });
     setErrors({});
     onClose();
@@ -219,19 +219,26 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
             />
           </div>
 
-          {/* 単価 */}
+          {/* 単価率 */}
           <div className="mb-4">
-            <label htmlFor="workerUnitPrice" className="block text-sm font-medium text-gray-700 mb-2">
-              単価
+            <label htmlFor="workerUnitPriceRatio" className="block text-sm font-medium text-gray-700 mb-2">
+              単価率
             </label>
             <input
               type="number"
-              id="workerUnitPrice"
-              value={formData.unitPrice}
-              onChange={(e) => handleInputChange('unitPrice', parseInt(e.target.value) || 0)}
+              id="workerUnitPriceRatio"
+              value={formData.unitPriceRatio.toFixed(1)}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value) && value >= 0 && value <= 999.9) {
+                  handleInputChange('unitPriceRatio', Math.round(value * 10) / 10);
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="0"
+              placeholder="1.0"
               min="0"
+              max="999.9"
+              step="0.1"
             />
           </div>
 
