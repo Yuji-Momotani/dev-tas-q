@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserPlus, X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { inviteWorkerByEmail, supabaseAdmin } from '../utils/supabaseAdmin';
@@ -14,6 +14,8 @@ interface WorkerFormData {
   email: string;
   nextVisitDate: string;
   unitPriceRatio: number;
+  skillRankId: string;
+  skillComment: string;
 }
 
 const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, onSave }) => {
@@ -22,12 +24,39 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
     email: '',
     nextVisitDate: '',
     unitPriceRatio: 1.0,
+    skillRankId: '',
+    skillComment: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [skillOptions, setSkillOptions] = useState<{ id: string; rank: string }[]>([]);
 
+  // m_rankテーブルからスキル選択肢を取得
+  useEffect(() => {
+    const fetchSkillOptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('m_rank')
+          .select('id, rank')
+          .order('rank');
+        
+        if (error) {
+          console.error('スキルオプション取得エラー:', error);
+          return;
+        }
+        
+        setSkillOptions(data || []);
+      } catch (err) {
+        console.error('スキルオプション取得エラー:', err);
+      }
+    };
+
+    if (isOpen) {
+      fetchSkillOptions();
+    }
+  }, [isOpen]);
 
   const handleInputChange = (field: keyof WorkerFormData, value: string | number) => {
     setFormData(prev => ({
@@ -92,9 +121,11 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
         auth_user_id: authUserId,
       };
 
-      const { error } = await supabase
+      const { data: workerInsertData, error } = await supabase
         .from('workers')
-        .insert([workerData]);
+        .insert([workerData])
+        .select('id')
+        .single();
 
       if (error) {
         // ユーザーテーブル登録失敗時は、作成されたAuthユーザーを削除
@@ -122,6 +153,24 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
         return; // エラー時は処理を終了
       }
 
+      // worker_skillsテーブルにスキル情報を登録
+      if (formData.skillRankId && workerInsertData?.id) {
+        const skillData = {
+          worker_id: workerInsertData.id,
+          rank_id: formData.skillRankId,
+          comment: formData.skillComment || null,
+        };
+
+        const { error: skillError } = await supabase
+          .from('worker_skills')
+          .insert([skillData]);
+
+        if (skillError) {
+          console.error('スキル情報登録エラー:', skillError);
+          // スキル登録に失敗してもワーカー作成は成功扱いとする
+        }
+      }
+
       alert('作業者が正常に作成され、招待メールを送信しました。\n作業者にメールを確認してもらい、パスワードを設定してもらってください。');
 
       onSave(); // 親コンポーネントのデータ再取得をトリガー
@@ -140,6 +189,8 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
       email: '',
       nextVisitDate: '',
       unitPriceRatio: 1.0,
+      skillRankId: '',
+      skillComment: '',
     });
     setErrors({});
     onClose();
@@ -242,7 +293,40 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
             />
           </div>
 
+          {/* スキル */}
+          <div className="mb-4">
+            <label htmlFor="workerSkill" className="block text-sm font-medium text-gray-700 mb-2">
+              スキル
+            </label>
+            <select
+              id="workerSkill"
+              value={formData.skillRankId}
+              onChange={(e) => handleInputChange('skillRankId', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">選択してください</option>
+              {skillOptions.map((skill) => (
+                <option key={skill.id} value={skill.id}>
+                  {skill.rank}
+                </option>
+              ))}
+            </select>
+          </div>
 
+          {/* スキルコメント */}
+          <div className="mb-6">
+            <label htmlFor="workerSkillComment" className="block text-sm font-medium text-gray-700 mb-2">
+              スキルコメント
+            </label>
+            <textarea
+              id="workerSkillComment"
+              value={formData.skillComment}
+              onChange={(e) => handleInputChange('skillComment', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="スキルに関するコメントを入力してください"
+              rows={3}
+            />
+          </div>
 
           {/* Modal Footer */}
           <div className="flex justify-end space-x-3">

@@ -35,6 +35,7 @@ const WorkerDetailPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedWorker, setEditedWorker] = useState<WorkerDetail | null>(null);
+  const [skillOptions, setSkillOptions] = useState<{ id: string; rank: string }[]>([]);
 
   // 認証チェックとデータ取得
   const checkAuthentication = useCallback(async () => {
@@ -60,6 +61,31 @@ const WorkerDetailPage: React.FC = () => {
   useEffect(() => {
     checkAuthentication();
   }, [checkAuthentication]);
+
+  // m_rankテーブルからスキル選択肢を取得
+  useEffect(() => {
+    const fetchSkillOptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('m_rank')
+          .select('id, rank')
+          .order('rank');
+        
+        if (error) {
+          console.error('スキルオプション取得エラー:', error);
+          return;
+        }
+        
+        setSkillOptions(data || []);
+      } catch (err) {
+        console.error('スキルオプション取得エラー:', err);
+      }
+    };
+
+    if (isEditing) {
+      fetchSkillOptions();
+    }
+  }, [isEditing]);
 
   // 作業者詳細データを取得
   const fetchWorkerDetail = async (workerId: number) => {
@@ -198,7 +224,39 @@ const WorkerDetailPage: React.FC = () => {
 
       if (workerError) throw workerError;
 
-      // スキル情報を更新（必要に応じて実装）
+      // スキル情報を更新
+      if (editedWorker.skills.length > 0) {
+        const skill = editedWorker.skills[0];
+        
+        if (skill.id && skill.id > 0) {
+          // 既存のスキル情報を更新
+          const { error: skillUpdateError } = await supabase
+            .from('worker_skills')
+            .update({
+              rank_id: skill.rankID || null,
+              comment: skill.comment || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', skill.id);
+
+          if (skillUpdateError) {
+            console.error('スキル情報更新エラー:', skillUpdateError);
+          }
+        } else if (skill.rankID || skill.comment) {
+          // 新しいスキル情報を挿入
+          const { error: skillInsertError } = await supabase
+            .from('worker_skills')
+            .insert([{
+              worker_id: editedWorker.id,
+              rank_id: skill.rankID || null,
+              comment: skill.comment || null
+            }]);
+
+          if (skillInsertError) {
+            console.error('スキル情報登録エラー:', skillInsertError);
+          }
+        }
+      }
       
       setIsEditing(false);
       alert('変更が保存されました。');
@@ -494,8 +552,56 @@ const WorkerDetailPage: React.FC = () => {
             <div className="space-y-6">
               {/* グループ表示エリア */}
               <div className="border-b border-gray-200 pb-4">
-                <div className="h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4">
+                <div className="h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4 relative">
                   <span className="text-2xl text-gray-400">A</span>
+                  {/* ランク表示（円） */}
+                  <div className="absolute top-2 right-2">
+                    {isEditing ? (
+                      <select
+                        value={editedWorker.skills.length > 0 ? editedWorker.skills[0].rankID?.toString() || '' : ''}
+                        onChange={(e) => {
+                          const rankId = e.target.value;
+                          const selectedSkill = skillOptions.find(s => s.id === rankId);
+                          if (editedWorker.skills.length > 0) {
+                            const updatedSkills = [...editedWorker.skills];
+                            updatedSkills[0] = {
+                              ...updatedSkills[0],
+                              rankID: rankId ? parseInt(rankId) : 0,
+                              rankName: selectedSkill?.rank || undefined
+                            };
+                            setEditedWorker({
+                              ...editedWorker,
+                              skills: updatedSkills
+                            });
+                          } else if (rankId) {
+                            setEditedWorker({
+                              ...editedWorker,
+                              skills: [{
+                                id: 0,
+                                workerID: editedWorker.id,
+                                rankID: parseInt(rankId),
+                                rankName: selectedSkill?.rank || undefined,
+                                comment: undefined
+                              }]
+                            });
+                          }
+                        }}
+                        className="w-16 h-8 text-xs border border-gray-300 rounded-full px-2 text-center focus:outline-none focus:ring-1 focus:ring-green-500"
+                      >
+                        <option value="">-</option>
+                        {skillOptions.map((skill) => (
+                          <option key={skill.id} value={skill.id}>
+                            {skill.rank}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                        {editedWorker.skills.length > 0 && editedWorker.skills[0].rankName ? 
+                          editedWorker.skills[0].rankName : '-'}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center">
                   <label className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">グループ</label>
@@ -516,26 +622,45 @@ const WorkerDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* スキル */}
+              {/* スキルコメント */}
               <div className="border-b border-gray-200 pb-4">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">スキル</label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">スキルコメント</label>
                 <div className="ml-8">
                   {isEditing ? (
                     <textarea
-                      value={editedWorker.skills.map(s => s.rankName || s.comment || '').join('\n')}
-                      onChange={(e) => console.log('スキル編集はTODO')}
+                      value={editedWorker.skills.length > 0 ? editedWorker.skills[0].comment || '' : ''}
+                      onChange={(e) => {
+                        if (editedWorker.skills.length > 0) {
+                          const updatedSkills = [...editedWorker.skills];
+                          updatedSkills[0] = {
+                            ...updatedSkills[0],
+                            comment: e.target.value
+                          };
+                          setEditedWorker({
+                            ...editedWorker,
+                            skills: updatedSkills
+                          });
+                        } else {
+                          setEditedWorker({
+                            ...editedWorker,
+                            skills: [{
+                              id: 0,
+                              workerID: editedWorker.id,
+                              rankID: 0,
+                              rankName: undefined,
+                              comment: e.target.value
+                            }]
+                          });
+                        }
+                      }}
                       rows={4}
+                      placeholder="スキルに関するコメントを入力してください"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   ) : (
                     <div className="text-sm text-gray-600">
-                      {editedWorker.skills.length > 0 ? (
-                        editedWorker.skills.map((skill, index) => (
-                          <div key={skill.id || index}>
-                            {skill.rankName && <span className="font-medium">{skill.rankName}</span>}
-                            {skill.comment && <span className="ml-2">{skill.comment}</span>}
-                          </div>
-                        ))
+                      {editedWorker.skills.length > 0 && editedWorker.skills[0].comment ? (
+                        <div>{editedWorker.skills[0].comment}</div>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
@@ -547,46 +672,32 @@ const WorkerDetailPage: React.FC = () => {
           </div>
 
           {/* 作業一覧テーブル */}
-          {/* 作業一覧 - 添付画像のスタイルに合わせて修正 */}
           <div className="mt-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4">作業一覧</h3>
-            <div className="space-y-3">
-              {editedWorker.workHistory.map((workHistory, index) => (
-                <div key={index} className="flex items-center space-x-4">
-                  {/* 番号 */}
-                  <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
-                    {index + 1}
+            {editedWorker.workHistory.length > 0 ? (
+              <div className="space-y-3">
+                {editedWorker.workHistory.map((workHistory, index) => (
+                  <div key={index} className="flex items-center space-x-4">
+                    {/* 番号 */}
+                    <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
+                      {index + 1}
+                    </div>
+                    
+                    {/* ステータスバッジ */}
+                    <div className="flex-shrink-0">
+                      <WorkStatusBadge status={workHistory.work.status} />
+                    </div>
+                    
+                    {/* 作業名 */}
+                    <div className="flex-1 text-sm text-gray-900">
+                      #{workHistory.work.id} / {workHistory.work.title}
+                    </div>
                   </div>
-                  
-                  {/* ステータスバッジ */}
-                  <div className="flex-shrink-0">
-                    <WorkStatusBadge status={workHistory.work.status} />
-                  </div>
-                  
-                  {/* 作業名 */}
-                  <div className="flex-1 text-sm text-gray-900">
-                    #{workHistory.work.id} / {workHistory.work.title}
-                  </div>
-                </div>
-              ))}
-              
-              {/* 空の行を表示（最大3行まで） */}
-              {Array.from({ length: Math.max(0, 3 - editedWorker.workHistory.length) }).map((_, index) => (
-                <div key={`empty-${index}`} className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-full text-sm font-medium text-gray-400">
-                    {editedWorker.workHistory.length + index + 1}
-                  </div>
-                  <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-400 text-white">
-                      -
-                    </span>
-                  </div>
-                  <div className="flex-1 text-sm text-gray-400">
-                    -
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">作業なし</div>
+            )}
           </div>
 
           </div>
