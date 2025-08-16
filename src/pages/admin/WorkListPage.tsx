@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client';
 import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 // Supabaseのworks型を拡張してWork型に対応
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
@@ -36,6 +37,9 @@ const WorkListPage: React.FC = () => {
 
   // モーダル状態
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Realtime channel ref
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const checkAuthentication = useCallback(async () => {
     try {
@@ -53,12 +57,7 @@ const WorkListPage: React.FC = () => {
     }
   }, [navigate]);
 
-  // 認証チェックとデータ取得
-  useEffect(() => {
-    checkAuthentication();
-  }, [checkAuthentication]);
-
-  const fetchWorks = async () => {
+  const fetchWorks = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -111,7 +110,64 @@ const WorkListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  // 認証チェックとデータ取得
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
+  
+  // Realtime subscription setup
+  useEffect(() => {
+    console.log('Realtime subscription setup starting...');
+    
+    // チャンネルを設定
+    const channel = supabase
+      .channel('works-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'works'
+        },
+        async (payload) => {
+          console.log('Work table change detected:', payload);
+          
+          // 変更の種類に応じて処理
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+            console.log('Triggering data refetch due to:', payload.eventType);
+            // データを再取得（フィルターを維持したまま）
+            await fetchWorks();
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        console.log('Realtime subscription status:', status);
+        if (err) {
+          console.error('Realtime subscription error:', err);
+        } else if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to works table changes');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime channel error occurred');
+        } else if (status === 'TIMED_OUT') {
+          console.error('Realtime subscription timed out');
+        } else if (status === 'CLOSED') {
+          console.log('Realtime channel closed');
+        }
+      });
+    
+    // チャンネル参照を保存
+    channelRef.current = channel;
+    
+    // クリーンアップ
+    return () => {
+      console.log('Cleaning up Realtime subscription...');
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [fetchWorks]);
 
   const fetchWorkers = async () => {
     try {
