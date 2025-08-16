@@ -14,7 +14,9 @@ import { WorkStatus } from '../../constants/workStatus';
 // Supabaseのworks型を拡張してWork型に対応
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
   workers?: {
+    id: number;
     name: string | null;
+    unit_price_ratio: number | null;
   } | null;
 };
 
@@ -67,7 +69,8 @@ const WorkListPage: React.FC = () => {
           *,
           workers (
             id,
-            name
+            name,
+            unit_price_ratio
           )
         `)
         .is('deleted_at', null)
@@ -97,6 +100,7 @@ const WorkListPage: React.FC = () => {
         quantity: work.quantity || undefined,
         unitPrice: work.unit_price || 0,
         deliveryDate: work.delivery_date ? new Date(work.delivery_date) : undefined,
+        workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
       }));
 
       setWorkItems(convertedItems);
@@ -608,7 +612,7 @@ const WorkListPage: React.FC = () => {
                       {item.unitPrice ? `¥${item.unitPrice}` : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {(item.quantity && item.unitPrice) ? `¥${(item.quantity * item.unitPrice).toLocaleString()}` : '-'}
+                      {(item.quantity && item.unitPrice) ? `¥${Math.floor(item.quantity * item.unitPrice * (item.workerUnitPriceRatio || 1.0)).toLocaleString()}` : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'}

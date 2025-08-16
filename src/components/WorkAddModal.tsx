@@ -73,7 +73,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       setLoading(true);
       const { data, error } = await supabase
         .from('workers')
-        .select('id, name')
+        .select('id, name, unit_price_ratio')
         .is('deleted_at', null)
         .order('name');
 
@@ -114,10 +114,18 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     }
 
     // 数量または単価が変更された場合、費用を自動計算
-    if (field === 'quantity' || field === 'unitPrice') {
+    if (field === 'quantity' || field === 'unitPrice' || field === 'assignee') {
       const quantity = field === 'quantity' ? Number(value) : formData.quantity;
       const unitPrice = field === 'unitPrice' ? Number(value) : formData.unitPrice;
-      updatedData.totalCost = quantity * unitPrice;
+      let selectedWorker = null;
+      if (field === 'assignee') {
+        selectedWorker = workers.find(worker => worker.name === value);
+      } else {
+        selectedWorker = workers.find(worker => worker.name === formData.assignee);
+      }
+      const unitPriceRatio = selectedWorker?.unit_price_ratio || 1.0;
+      // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
+      updatedData.totalCost = Math.floor(quantity * unitPrice * unitPriceRatio);
     }
 
     setFormData(updatedData);
