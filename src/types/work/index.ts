@@ -21,7 +21,6 @@ export interface WorkDetail extends Work {
 
 export interface WorkVideo {
   id: number;
-  workID: number;
   title: string;
   creator: string;
   createdAt: Date;
