@@ -177,7 +177,6 @@ export type Database = {
           updated_at: string | null
           video_title: string | null
           video_url: string | null
-          work_id: number | null
         }
         Insert: {
           created_admin_id?: number | null
@@ -187,7 +186,6 @@ export type Database = {
           updated_at?: string | null
           video_title?: string | null
           video_url?: string | null
-          work_id?: number | null
         }
         Update: {
           created_admin_id?: number | null
@@ -197,7 +195,6 @@ export type Database = {
           updated_at?: string | null
           video_title?: string | null
           video_url?: string | null
-          work_id?: number | null
         }
         Relationships: [
           {
@@ -205,13 +202,6 @@ export type Database = {
             columns: ["created_admin_id"]
             isOneToOne: false
             referencedRelation: "admins"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_videos_work_id_fkey"
-            columns: ["work_id"]
-            isOneToOne: false
-            referencedRelation: "works"
             referencedColumns: ["id"]
           },
         ]
@@ -325,6 +315,7 @@ export type Database = {
           unit_price: number | null
           updated_at: string | null
           work_title: string | null
+          work_videos_id: number | null
           worker_id: number | null
         }
         Insert: {
@@ -337,6 +328,7 @@ export type Database = {
           unit_price?: number | null
           updated_at?: string | null
           work_title?: string | null
+          work_videos_id?: number | null
           worker_id?: number | null
         }
         Update: {
@@ -349,6 +341,7 @@ export type Database = {
           unit_price?: number | null
           updated_at?: string | null
           work_title?: string | null
+          work_videos_id?: number | null
           worker_id?: number | null
         }
         Relationships: [
@@ -357,6 +350,13 @@ export type Database = {
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "works_work_videos_id_fkey"
+            columns: ["work_videos_id"]
+            isOneToOne: false
+            referencedRelation: "work_videos"
             referencedColumns: ["id"]
           },
         ]

@@ -10,10 +10,6 @@ import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '
 
 // Supabaseのwork_videos型を拡張
 type WorkVideoWithRelations = Database['public']['Tables']['work_videos']['Row'] & {
-  works?: {
-    id: number;
-    work_title: string | null;
-  } | null;
   admins?: {
     name: string | null;
   } | null;
@@ -25,8 +21,7 @@ const WorkVideoListPage: React.FC = () => {
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [adminList, setAdminList] = useState<{ id: number; name: string }[]>([]);
-  const [workList, setWorkList] = useState<{ id: number; title: string; hasVideo?: boolean }[]>([]);
+  const [currentAdminId, setCurrentAdminId] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
@@ -40,10 +35,24 @@ const WorkVideoListPage: React.FC = () => {
         navigate('/admin/login');
         return;
       }
+      
+      // ログインユーザーのadmin IDを取得
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .single();
+        
+      if (adminError || !adminData) {
+        console.error('管理者情報の取得に失敗:', adminError);
+        navigate('/admin/login');
+        return;
+      }
+      
+      setCurrentAdminId(adminData.id);
+      
       // 認証確認後、データを取得
       fetchWorkVideos();
-      fetchAdmins();
-      fetchWorks();
     } catch (err) {
       console.error('認証チェックエラー:', err);
       navigate('/admin/login');
@@ -66,11 +75,6 @@ const WorkVideoListPage: React.FC = () => {
           video_url,
           created_at,
           created_admin_id,
-          work_id,
-          works (
-            id,
-            work_title
-          ),
           admins (
             name
           )
@@ -83,11 +87,9 @@ const WorkVideoListPage: React.FC = () => {
       // データをWorkVideo型に変換
       const videos: WorkVideo[] = (data as WorkVideoWithRelations[]).map(video => ({
         id: video.id,
-        workID: video.work_id || 0,
         title: video.video_title || '無題',
         creator: video.admins?.name || '不明',
         createdAt: video.created_at ? new Date(video.created_at) : new Date(),
-        workTitle: video.works?.work_title || undefined,
         videoUrl: video.video_url || undefined
       }));
 
@@ -115,52 +117,7 @@ const WorkVideoListPage: React.FC = () => {
     }
   };
 
-  // 管理者リストを取得
-  const fetchAdmins = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('admins')
-        .select('id, name')
-        .is('deleted_at', null);
 
-      if (error) throw error;
-
-      setAdminList((data || []).map(admin => ({
-        id: admin.id,
-        name: admin.name || '名前未設定'
-      })));
-    } catch (err) {
-      console.error('管理者データ取得エラー:', err);
-    }
-  };
-
-  // 作業リストを取得
-  const fetchWorks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('works')
-        .select(`
-          id, 
-          work_title,
-          work_videos!left (
-            id
-          )
-        `)
-        .is('deleted_at', null)
-        .is('work_videos.deleted_at', null)
-        .order('work_title');
-
-      if (error) throw error;
-
-      setWorkList((data || []).map(work => ({
-        id: work.id,
-        title: work.work_title || '無題',
-        hasVideo: work.work_videos && work.work_videos.length > 0
-      })));
-    } catch (err) {
-      console.error('作業データ取得エラー:', err);
-    }
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -200,8 +157,6 @@ const WorkVideoListPage: React.FC = () => {
   // 動画追加モーダルのサブミット処理
   const handleVideoSubmit = async (formData: {
     title: string;
-    creatorID: string;
-    workID: string;
     uploadType: 'file' | 'youtube';
     file: File | null;
     youtubeUrl: string;
@@ -209,14 +164,9 @@ const WorkVideoListPage: React.FC = () => {
     setLoading(true);
     
     try {
-      // 認証状態を確認
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      console.log('Auth session:', session);
-      console.log('User role:', session?.user?.role);
-      console.log('User ID:', session?.user?.id);
-      
-      if (authError || !session) {
-        throw new Error('認証が必要です。ログインしてください。');
+      // ログインユーザーのadmin IDが取得済みかチェック
+      if (!currentAdminId) {
+        throw new Error('ユーザー情報の取得に失敗しました。ページを再読み込みしてください。');
       }
 
       let videoUrl: string;
@@ -254,17 +204,18 @@ const WorkVideoListPage: React.FC = () => {
       }
       
       // 動画情報をデータベースに保存
-      const { error } = await supabase
+      const { data: videoData, error: videoError } = await supabase
         .from('work_videos')
         .insert({
           video_title: formData.title,
           video_url: videoUrl,
-          work_id: formData.workID ? parseInt(formData.workID) : null,
-          created_admin_id: parseInt(formData.creatorID),
+          created_admin_id: currentAdminId,
           created_at: new Date().toISOString()
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (videoError) throw videoError;
 
       alert('動画が追加されました！');
       fetchWorkVideos(); // リストを更新
@@ -388,9 +339,6 @@ const WorkVideoListPage: React.FC = () => {
                     動画タイトル
                   </th>
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
-                    関連作業
-                  </th>
-                  <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
                     作成者
                   </th>
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -404,19 +352,19 @@ const WorkVideoListPage: React.FC = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
                       読み込み中...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={6} className="border border-gray-300 px-6 py-8 text-center text-red-500">
+                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-red-500">
                       {error}
                     </td>
                   </tr>
                 ) : workVideos.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="border border-gray-300 px-6 py-8 text-center text-gray-500">
                       動画がありません
                     </td>
                   </tr>
@@ -487,9 +435,6 @@ const WorkVideoListPage: React.FC = () => {
                         {video.title}
                       </td>
                       <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
-                        {video.workTitle ? `#${video.workID} / ${video.workTitle}` : '-'}
-                      </td>
-                      <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
                         {video.creator}
                       </td>
                       <td className="border border-gray-300 px-6 py-4 text-sm text-gray-900">
@@ -522,8 +467,6 @@ const WorkVideoListPage: React.FC = () => {
         isOpen={showAddModal}
         onClose={handleCloseAddModal}
         onSubmit={handleVideoSubmit}
-        adminList={adminList}
-        workList={workList}
         loading={loading}
       />
 

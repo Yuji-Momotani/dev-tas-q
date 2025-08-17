@@ -4,8 +4,6 @@ import { isValidYouTubeUrl } from '../utils/video';
 
 interface VideoFormData {
   title: string;
-  creatorID: string;
-  workID: string;
   uploadType: 'file' | 'youtube';
   file: File | null;
   youtubeUrl: string;
@@ -15,8 +13,6 @@ interface VideoAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (formData: VideoFormData) => Promise<void>;
-  adminList: Array<{ id: number; name: string }>;
-  workList: Array<{ id: number; title: string; hasVideo?: boolean }>;
   loading: boolean;
 }
 
@@ -24,14 +20,10 @@ const VideoAddModal: React.FC<VideoAddModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  adminList,
-  workList,
   loading
 }) => {
   const [formData, setFormData] = useState<VideoFormData>({
     title: '',
-    creatorID: '',
-    workID: '',
     uploadType: 'file',
     file: null,
     youtubeUrl: ''
@@ -42,8 +34,6 @@ const VideoAddModal: React.FC<VideoAddModalProps> = ({
     // フォームをリセット
     setFormData({
       title: '',
-      creatorID: '',
-      workID: '',
       uploadType: 'file',
       file: null,
       youtubeUrl: ''
@@ -273,54 +263,7 @@ const VideoAddModal: React.FC<VideoAddModalProps> = ({
             />
           </div>
 
-          {/* 作業選択 */}
-          <div className="mb-4">
-            <label htmlFor="work" className="block text-sm font-medium text-gray-700 mb-2">
-              関連作業 <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="work"
-              value={formData.workID}
-              onChange={(e) => handleFormChange('workID', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              required
-            >
-              <option value="">作業を選択してください</option>
-              {workList
-                .filter(work => !work.hasVideo)
-                .map((work) => (
-                  <option key={work.id} value={work.id.toString()}>
-                    #{work.id} / {work.title}
-                  </option>
-                ))}
-            </select>
-            {workList.some(work => work.hasVideo) && (
-              <p className="mt-2 text-sm text-gray-500">
-                ※ 既に動画が登録されている作業は表示されません
-              </p>
-            )}
-          </div>
 
-          {/* 作成者 */}
-          <div className="mb-6">
-            <label htmlFor="creator" className="block text-sm font-medium text-gray-700 mb-2">
-              作成者 <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="creator"
-              value={formData.creatorID}
-              onChange={(e) => handleFormChange('creatorID', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              required
-            >
-              <option value="">作成者を選択してください</option>
-              {adminList.map((admin) => (
-                <option key={admin.id} value={admin.id.toString()}>
-                  {admin.name}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Modal Footer */}
           <div className="flex justify-end space-x-3">
@@ -335,8 +278,6 @@ const VideoAddModal: React.FC<VideoAddModalProps> = ({
               type="submit"
               disabled={
                 !formData.title || 
-                !formData.creatorID || 
-                !formData.workID ||
                 loading ||
                 (formData.uploadType === 'file' && !formData.file) ||
                 (formData.uploadType === 'youtube' && (!formData.youtubeUrl || !isValidYouTubeUrl(formData.youtubeUrl)))

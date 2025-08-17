@@ -35,6 +35,7 @@ const WorkDetailPage: React.FC = () => {
     delivery_date: string | null;
   } | null>(null);
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
+  const [availableVideos, setAvailableVideos] = useState<WorkVideo[]>([]);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<number, string>>({});
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
@@ -43,7 +44,7 @@ const WorkDetailPage: React.FC = () => {
     if (id) {
       fetchWorkDetail();
       fetchWorkers();
-      fetchWorkVideos();
+      fetchAvailableVideos();
     }
   }, [id]);
 
@@ -96,6 +97,11 @@ const WorkDetailPage: React.FC = () => {
         unit_price: data.unit_price,
         delivery_date: data.delivery_date
       });
+      
+      // 作業データが取得できたら動画データも取得
+      if (data.work_videos_id) {
+        await fetchWorkVideos(data);
+      }
     } catch (err) {
       console.error('作業詳細取得エラー:', err);
       setError('作業データの取得に失敗しました');
@@ -120,9 +126,17 @@ const WorkDetailPage: React.FC = () => {
   };
 
   // 作業に紐づく動画データを取得
-  const fetchWorkVideos = async () => {
+  const fetchWorkVideos = async (workData?: any) => {
     try {
       if (!id) return;
+      
+      const workVideosId = workData?.work_videos_id || workItem?.work_videos_id;
+      
+      // 作業に動画が紐づいている場合のみ取得
+      if (!workVideosId) {
+        setWorkVideos([]);
+        return;
+      }
       
       const { data, error } = await supabase
         .from('work_videos')
@@ -132,14 +146,12 @@ const WorkDetailPage: React.FC = () => {
           video_url,
           created_at,
           created_admin_id,
-          work_id,
           admins (
             name
           )
         `)
-        .eq('work_id', Number(id))
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .eq('id', workVideosId)
+        .is('deleted_at', null);
 
       if (error) {
         if (error.message.includes('JWT') || 
@@ -156,7 +168,6 @@ const WorkDetailPage: React.FC = () => {
       // データをWorkVideo型に変換
       const videos: WorkVideo[] = (data || []).map((video: any) => ({
         id: video.id,
-        workID: video.work_id || 0,
         title: video.video_title || '無題',
         creator: video.admins?.name || '不明',
         createdAt: video.created_at ? new Date(video.created_at) : new Date(),
@@ -181,6 +192,51 @@ const WorkDetailPage: React.FC = () => {
       });
     } catch (err) {
       console.error('作業動画取得エラー:', err);
+    }
+  };
+
+  // 利用可能な動画一覧を取得
+  const fetchAvailableVideos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('work_videos')
+        .select(`
+          id,
+          video_title,
+          video_url,
+          created_at,
+          created_admin_id,
+          admins (
+            name
+          )
+        `)
+        .is('deleted_at', null)
+        .order('video_title');
+
+      if (error) {
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+
+      // データをWorkVideo型に変換
+      const videos: WorkVideo[] = (data || []).map((video: any) => ({
+        id: video.id,
+        title: video.video_title || '無題',
+        creator: video.admins?.name || '不明',
+        createdAt: video.created_at ? new Date(video.created_at) : new Date(),
+        videoUrl: video.video_url || undefined
+      }));
+
+      setAvailableVideos(videos);
+    } catch (err) {
+      console.error('動画一覧取得エラー:', err);
     }
   };
 
@@ -323,6 +379,44 @@ const WorkDetailPage: React.FC = () => {
     if (!editedItem?.quantity || !editedItem?.unit_price) return 0;
     const unitPriceRatio = workItem?.workers?.unit_price_ratio || 1.0;
     return Math.floor(editedItem.quantity * editedItem.unit_price * unitPriceRatio);
+  };
+
+  // 動画選択変更処理
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedVideoId = e.target.value ? parseInt(e.target.value) : null;
+    
+    if (!workItem || !id) return;
+    
+    try {
+      setLoading(true);
+      
+      // worksテーブルのwork_videos_idを更新
+      const { error } = await supabase
+        .from('works')
+        .update({ work_videos_id: selectedVideoId })
+        .eq('id', Number(id));
+        
+      if (error) {
+        if (error.message.includes('JWT') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Invalid JWT') ||
+            error.message.includes('expired') ||
+            error.code === 'PGRST301') {
+          navigate('/admin/login');
+          return;
+        }
+        throw error;
+      }
+      
+      // データを再取得して表示を更新
+      await fetchWorkDetail();
+      alert('動画の割り当てを更新しました。');
+    } catch (err) {
+      console.error('動画割り当て更新エラー:', err);
+      alert('動画の割り当て更新に失敗しました。');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -719,6 +813,28 @@ const WorkDetailPage: React.FC = () => {
                   </div>
                 </div>
               )}
+              
+              {/* 動画選択用セレクトボックス */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  作業手順動画を選択
+                </label>
+                <select
+                  value={workItem.work_videos_id || ''}
+                  onChange={handleVideoChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                >
+                  <option value="">動画を選択してください</option>
+                  {availableVideos.map((video) => (
+                    <option key={video.id} value={video.id}>
+                      {video.title}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-sm text-gray-500">
+                  この作業で使用する手順動画を選択してください。
+                </p>
+              </div>
             </div>
           </div>
         </div>
