@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Menu, LogOut, Truck, Mail, Package } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
+import { WorkStatus } from '../../constants/workStatus';
 
 const DeliveryMethodPage: React.FC = () => {
   const navigate = useNavigate();
+  const { workId } = useParams<{ workId: string }>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [currentWorkId, setCurrentWorkId] = useState<number | null>(null);
@@ -14,10 +16,24 @@ const DeliveryMethodPage: React.FC = () => {
     navigate('/worker/login');
   };
 
-  // 現在の作業を取得
+  // パスパラメータから完了対象の作業IDを取得して検証
   useEffect(() => {
-    const fetchCurrentWork = async () => {
+    const validateWorkId = async () => {
       try {
+        // パスパラメータから作業IDを取得
+        if (!workId) {
+          setError('作業IDが指定されていません');
+          navigate('/worker/work');
+          return;
+        }
+
+        const completingWorkId = parseInt(workId, 10);
+        if (isNaN(completingWorkId)) {
+          setError('無効な作業IDです');
+          navigate('/worker/work');
+          return;
+        }
+
         // 現在のユーザーを取得
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
@@ -39,38 +55,35 @@ const DeliveryMethodPage: React.FC = () => {
           return;
         }
 
-        // 着手中の作業を取得
+        // 指定された作業IDが現在のユーザーの作業かつ着手中かを確認
         const { data: workData, error: workError } = await supabase
           .from('works')
-          .select('id')
+          .select('id, status')
+          .eq('id', completingWorkId)
           .eq('worker_id', workerData.id)
-          .eq('status', 3)
+          .eq('status', WorkStatus.IN_PROGRESS)
           .is('deleted_at', null)
-          .limit(1);
+          .single();
 
-        if (workError) {
-          console.error('作業データ取得エラー:', workError);
-          setError('作業データの取得に失敗しました');
+        if (workError || !workData) {
+          setError('指定された作業が見つからないか、完了権限がありません');
+          navigate('/worker/work');
           return;
         }
 
-        if (workData && workData.length > 0) {
-          setCurrentWorkId(workData[0].id);
-        } else {
-          // 着手中の作業がない場合は作業画面に戻る
-          navigate('/worker/work');
-        }
+        setCurrentWorkId(completingWorkId);
         
       } catch (err) {
-        console.error('データ取得エラー:', err);
+        console.error('作業ID検証エラー:', err);
         setError('データの取得中にエラーが発生しました');
+        navigate('/worker/work');
       }
     };
 
-    fetchCurrentWork();
-  }, [navigate]);
+    validateWorkId();
+  }, [workId, navigate]);
 
-  const handleDeliveryMethod = async (method: string) => {
+  const handleDeliveryMethod = async (status: WorkStatus) => {
     if (!currentWorkId) {
       setError('作業IDが見つかりません');
       return;
@@ -80,11 +93,11 @@ const DeliveryMethodPage: React.FC = () => {
       setLoading(true);
       setError('');
 
-      // 作業ステータスを完了(4)に更新
+      // 作業ステータスを指定されたステータスに更新
       const { error: updateError } = await supabase
         .from('works')
         .update({ 
-          status: 4,
+          status: status,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentWorkId);
@@ -95,8 +108,24 @@ const DeliveryMethodPage: React.FC = () => {
         return;
       }
 
+      // ステータスに応じたメッセージを表示
+      let methodName: string;
+      switch (status) {
+        case WorkStatus.WAITING_DROPOFF:
+          methodName = '持ち込み';
+          break;
+        case WorkStatus.IN_DELIVERY:
+          methodName = '郵送';
+          break;
+        case WorkStatus.PICKUP_REQUESTING:
+          methodName = '集荷';
+          break;
+        default:
+          methodName = '不明';
+      }
+
       // 成功メッセージ表示
-      alert(`配送方法「${method}」を選択しました。\n作業が完了しました。`);
+      alert(`配送方法「${methodName}」を選択しました。\n作業が完了しました。`);
       
       // 作業画面に戻る
       navigate('/worker/work');
@@ -147,7 +176,7 @@ const DeliveryMethodPage: React.FC = () => {
           <div className="space-y-4 max-w-md mx-auto">
             {/* 持ち込み */}
             <button
-              onClick={() => handleDeliveryMethod('持ち込み')}
+              onClick={() => handleDeliveryMethod(WorkStatus.WAITING_DROPOFF)}
               disabled={loading || !currentWorkId}
               className="w-full bg-blue-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -157,7 +186,7 @@ const DeliveryMethodPage: React.FC = () => {
 
             {/* 郵送 */}
             <button
-              onClick={() => handleDeliveryMethod('郵送')}
+              onClick={() => handleDeliveryMethod(WorkStatus.IN_DELIVERY)}
               disabled={loading || !currentWorkId}
               className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -167,7 +196,7 @@ const DeliveryMethodPage: React.FC = () => {
 
             {/* 集荷 */}
             <button
-              onClick={() => handleDeliveryMethod('集荷')}
+              onClick={() => handleDeliveryMethod(WorkStatus.PICKUP_REQUESTING)}
               disabled={loading || !currentWorkId}
               className="w-full bg-orange-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >

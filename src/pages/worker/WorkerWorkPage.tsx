@@ -5,9 +5,10 @@ import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
 import { isValidYouTubeUrl, generateVideoThumbnail } from '../../utils/video';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
+import { WorkStatus, getWorkStatusLabel } from '../../constants/workStatus';
 
 type WorkType = Tables<'works'> & {
-  work_videos?: Tables<'work_videos'>[];
+  work_videos?: Tables<'work_videos'>;
 };
 
 const WorkerWorkPage: React.FC = () => {
@@ -47,19 +48,19 @@ const WorkerWorkPage: React.FC = () => {
           return;
         }
 
-        // 進行中の作業を全て取得（status = 3: 進行中）
+        // 進行中の作業を全て取得
         const { data: workData, error: workError } = await supabase
           .from('works')
           .select(`
             *,
-            work_videos (
+            work_videos:work_videos_id (
               id,
               video_title,
               video_url
             )
           `)
           .eq('worker_id', workerData.id)
-          .eq('status', 3)
+          .eq('status', WorkStatus.IN_PROGRESS)
           .is('deleted_at', null)
           .order('updated_at', { ascending: false });
 
@@ -74,7 +75,7 @@ const WorkerWorkPage: React.FC = () => {
           
           // 各作業の動画サムネイルを生成
           workData.forEach((work) => {
-            const video = work.work_videos?.[0];
+            const video = work.work_videos;
             if (video && work.id) {
               generateThumbnailForVideo(video, work.id);
             }
@@ -120,13 +121,16 @@ const WorkerWorkPage: React.FC = () => {
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 3:
+      case WorkStatus.IN_PROGRESS:
         return 'bg-red-500';
-      case 2:
+      case WorkStatus.REQUESTING:
         return 'bg-yellow-500';
-      case 4:
+      case WorkStatus.IN_DELIVERY:
+      case WorkStatus.PICKUP_REQUESTING:
+      case WorkStatus.WAITING_DROPOFF:
+      case WorkStatus.COMPLETED:
         return 'bg-green-500';
-      case 1:
+      case WorkStatus.REQUEST_PLANNED:
         return 'bg-gray-500';
       default:
         return 'bg-gray-500';
@@ -134,18 +138,7 @@ const WorkerWorkPage: React.FC = () => {
   };
 
   const getStatusText = (status: number) => {
-    switch (status) {
-      case 3:
-        return '着手中';
-      case 2:
-        return '予定';
-      case 4:
-        return '完了';
-      case 1:
-        return '予定なし';
-      default:
-        return '';
-    }
+    return getWorkStatusLabel(status as WorkStatus);
   };
 
   const generateThumbnailForVideo = async (video: Tables<'work_videos'>, workId: number) => {
@@ -178,9 +171,8 @@ const WorkerWorkPage: React.FC = () => {
   };
 
   const handleCompleteWork = (workId: number) => {
-    // 作業IDをsessionStorageに保存して配送方法選択画面に遷移
-    sessionStorage.setItem('completingWorkId', workId.toString());
-    navigate('/worker/delivery-method');
+    // 作業IDをパスパラメータとして配送方法選択画面に遷移
+    navigate(`/worker/delivery-method/${workId}`);
   };
 
   if (loading) {
@@ -240,7 +232,7 @@ const WorkerWorkPage: React.FC = () => {
           <div className="space-y-6">
             {/* 各作業をカード形式で表示 */}
             {currentWorks.map((work) => {
-              const workVideo = work.work_videos?.[0] || null;
+              const workVideo = work.work_videos || null;
               const videoThumbnail = work.id ? videoThumbnails[work.id] : '';
               
               return (

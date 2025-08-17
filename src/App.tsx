@@ -39,7 +39,7 @@ function App() {
         <Route path="/worker/work" element={<WorkerWorkPage />} />
         <Route path="/worker/qr-scanner" element={<QRScannerPage />} />
         <Route path="/worker/mypage" element={<WorkerMyPage />} />
-        <Route path="/worker/delivery-method" element={<DeliveryMethodPage />} />
+        <Route path="/worker/delivery-method/:workId" element={<DeliveryMethodPage />} />
         <Route path="/worker/auth/callback" element={<WorkerAuthCallbackPage />} />
       </Routes>
     </Router>
