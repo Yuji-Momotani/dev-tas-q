@@ -277,13 +277,13 @@ const WorkerMyPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-medium">マイページ</h1>
           </div>
-          <button
+          {/* <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>ログアウト</span>
-          </button>
+          </button> */}
         </div>
       </header>
 
@@ -521,6 +521,15 @@ const WorkerMyPage: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleLogout}
+            className="mt-6 px-6 py-3 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors mb-6"
+          >
+            ログアウト
+          </button>
         </div>
       </div>
 
