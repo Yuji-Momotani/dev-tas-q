@@ -216,7 +216,6 @@ const WorkerWorkPage: React.FC = () => {
           >
             マイページ
           </button>
-          <div className="flex-1 bg-white border-2 border-gray-300 rounded-md"></div>
         </div>
 
         {/* Error Message */}
