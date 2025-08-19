@@ -10,6 +10,8 @@ const WorkerPasswordResetPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -73,8 +75,12 @@ const WorkerPasswordResetPage: React.FC = () => {
         {/* Header */}
         <header className="bg-green-600 text-white py-4 px-6">
           <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-2">
-              <Menu className="w-5 h-5 text-gray-600" />
+            <div className="bg-white rounded-md p-1 w-8">
+              <img 
+                src={logoPath}
+                alt="ロゴ"
+                className="w-full h-full object-cover"
+              />
             </div>
             <h1 className="text-xl font-medium">パスワードリセット</h1>
           </div>
@@ -122,8 +128,12 @@ const WorkerPasswordResetPage: React.FC = () => {
       {/* Header */}
       <header className="bg-green-600 text-white py-4 px-6">
         <div className="flex items-center space-x-3">
-          <div className="bg-white rounded-md p-2">
-            <Menu className="w-5 h-5 text-gray-600" />
+          <div className="bg-white rounded-md p-1 w-8">
+            <img 
+              src={logoPath}
+              alt="ロゴ"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-xl font-medium">パスワードリセット</h1>
         </div>

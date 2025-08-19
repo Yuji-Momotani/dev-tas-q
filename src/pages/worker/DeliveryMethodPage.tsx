@@ -11,10 +11,12 @@ const DeliveryMethodPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [currentWorkId, setCurrentWorkId] = useState<number | null>(null);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/worker/login');
-  };
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
+  // const handleLogout = async () => {
+  //   await supabase.auth.signOut();
+  //   navigate('/worker/login');
+  // };
 
   // パスパラメータから完了対象の作業IDを取得して検証
   useEffect(() => {
@@ -148,8 +150,12 @@ const DeliveryMethodPage: React.FC = () => {
       <header className="bg-green-600 text-white py-4 px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-2">
-              <Menu className="w-5 h-5 text-gray-600" />
+            <div className="bg-white rounded-md p-1 w-8">
+              <img 
+                src={logoPath}
+                alt="ロゴ"
+                className="w-full h-full object-cover"
+              />
             </div>
             <h1 className="text-xl font-medium">配送方法選択</h1>
           </div>

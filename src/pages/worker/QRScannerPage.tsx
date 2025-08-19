@@ -17,6 +17,8 @@ const QRScannerPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [currentWorkerId, setCurrentWorkerId] = useState<number | null>(null);
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   useEffect(() => {
     const initializeScanner = async () => {
       // 二重初期化を防ぐ
@@ -154,11 +156,11 @@ const QRScannerPage: React.FC = () => {
     setIsWaitingForQR(false);
   };
 
-  const handleLogout = async () => {
-    stopQRScanner();
-    await supabase.auth.signOut();
-    navigate('/worker/login');
-  };
+  // const handleLogout = async () => {
+  //   stopQRScanner();
+  //   await supabase.auth.signOut();
+  //   navigate('/worker/login');
+  // };
 
   const handleBack = () => {
     stopQRScanner();
@@ -268,8 +270,12 @@ const QRScannerPage: React.FC = () => {
       <header className="bg-green-600 text-white py-4 px-6 relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-2">
-              <Menu className="w-5 h-5 text-gray-600" />
+            <div className="bg-white rounded-md p-1 w-8">
+              <img 
+                src={logoPath}
+                alt="ロゴ"
+                className="w-full h-full object-cover"
+              />
             </div>
             <h1 className="text-xl font-medium">QR読取</h1>
           </div>
