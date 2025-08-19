@@ -40,6 +40,8 @@ const WorkerMyPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [workerId, setWorkerId] = useState<number | null>(null);
+
+  const unmannedPath = new URL("../../assets/unmanned.png", import.meta.url).href;
   
   // デフォルト値
   const defaultProfile: UserProfile = {
@@ -454,7 +456,7 @@ const WorkerMyPage: React.FC = () => {
               <div>
                 <div className="p-4 flex items-center justify-center w-24 h-24 rounded-full text-4xl font-bold text-white mb-4 mx-auto shadow-lg">
                   <img 
-                    src="/src/assets/unmanned.png"
+                    src={unmannedPath}
                     alt={userProfile.name}
                     className="w-full h-full object-cover"
                   />
