@@ -452,8 +452,12 @@ const WorkerMyPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Group */}
               <div>
-                <div className="flex items-center justify-center w-24 h-24 bg-yellow-400 rounded-full text-4xl font-bold text-white mb-4 mx-auto shadow-lg">
-                  {userProfile.group}
+                <div className="p-4 flex items-center justify-center w-24 h-24 rounded-full text-4xl font-bold text-white mb-4 mx-auto shadow-lg">
+                  <img 
+                    src="/src/assets/unmanned.png"
+                    alt={userProfile.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="text-center">
                   <label className="text-sm font-medium text-gray-700">グループ</label>
