@@ -138,6 +138,10 @@ const DeliveryMethodPage: React.FC = () => {
     }
   };
 
+  const handleBackToWork = () => {
+    navigate('/worker/work');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -149,18 +153,25 @@ const DeliveryMethodPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-medium">配送方法選択</h1>
           </div>
-          <button
+          {/* <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>ログアウト</span>
-          </button>
+          </button> */}
         </div>
       </header>
 
       {/* Main Content */}
       <div className="p-4">
+        <button
+          onClick={handleBackToWork}
+          className="px-6 py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors mb-6"
+        >
+          作業画面へ戻る
+        </button>
+
         {/* エラーメッセージ */}
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">

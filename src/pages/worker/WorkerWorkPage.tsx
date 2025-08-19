@@ -197,13 +197,13 @@ const WorkerWorkPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-medium">作業画面</h1>
           </div>
-          <button
+          {/* <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>ログアウト</span>
-          </button>
+          </button> */}
         </div>
       </header>
 
@@ -216,7 +216,6 @@ const WorkerWorkPage: React.FC = () => {
           >
             マイページ
           </button>
-          <div className="flex-1 bg-white border-2 border-gray-300 rounded-md"></div>
         </div>
 
         {/* Error Message */}
@@ -307,6 +306,8 @@ const WorkerWorkPage: React.FC = () => {
                       <h4 className="text-2xl font-semibold text-gray-700">
                         {work.work_title || '作業タイトル'}
                       </h4>
+                    </div>
+                    <div className="flex items-center space-x-4 mb-6">
                       <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(work.status || 0)}`}>
                         {getStatusText(work.status || 0)}
                       </span>

@@ -273,13 +273,13 @@ const QRScannerPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-medium">QR読取</h1>
           </div>
-          <button
+          {/* <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>ログアウト</span>
-          </button>
+          </button> */}
         </div>
       </header>
 
@@ -326,7 +326,7 @@ const QRScannerPage: React.FC = () => {
                 </div>
 
                 {/* Instructions */}
-                <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2 text-center">
+                <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2 text-center w-full">
                   <p className="text-white text-sm mb-3">
                     {showLinkButton ? 'QRコードが検出されました' : 'QRコードをフレーム内に合わせてください'}
                   </p>
@@ -334,11 +334,11 @@ const QRScannerPage: React.FC = () => {
 
                 {/* Link Button (iPhone style) */}
                 {showLinkButton && (
-                  <div className="absolute top-full mt-16 left-1/2 transform -translate-x-1/2">
+                  <div className="absolute top-full mt-16 left-1/2 transform -translate-x-1/2 w-full flex justify-center">
                     <button
                       onClick={handleLinkClick}
                       disabled={loading}
-                      className="bg-yellow-400 text-black px-6 py-3 rounded-full font-medium text-sm shadow-lg hover:bg-yellow-300 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-yellow-400 text-black px-6 py-3 rounded-full font-medium shadow-lg hover:bg-yellow-300 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span>🔗</span>
                       <span>{loading ? '処理中...' : '作業を開始'}</span>
@@ -357,7 +357,7 @@ const QRScannerPage: React.FC = () => {
             </div>
 
             {/* Dark Overlay with Cutout */}
-            <div className="absolute inset-0 bg-black bg-opacity-50 pointer-events-none">
+            <div className="absolute inset-0 bg-black bg-opacity-0 pointer-events-none">
               <div className="absolute inset-0 flex justify-center" style={{alignItems: 'flex-start', paddingTop: '20vh'}}>
                 <div className={`w-56 h-56 sm:w-64 sm:h-64 bg-transparent border-2 border-dashed rounded-lg transition-colors ${
                   isWaitingForQR ? 'border-white border-opacity-30' : 'border-green-400 border-opacity-80'

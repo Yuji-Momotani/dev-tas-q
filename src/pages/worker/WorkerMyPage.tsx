@@ -277,13 +277,13 @@ const WorkerMyPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-medium">マイページ</h1>
           </div>
-          <button
+          {/* <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>ログアウト</span>
-          </button>
+          </button> */}
         </div>
       </header>
 
@@ -452,8 +452,12 @@ const WorkerMyPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Group */}
               <div>
-                <div className="flex items-center justify-center w-24 h-24 bg-yellow-400 rounded-full text-4xl font-bold text-white mb-4 mx-auto shadow-lg">
-                  {userProfile.group}
+                <div className="p-4 flex items-center justify-center w-24 h-24 rounded-full text-4xl font-bold text-white mb-4 mx-auto shadow-lg">
+                  <img 
+                    src="/src/assets/unmanned.png"
+                    alt={userProfile.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="text-center">
                   <label className="text-sm font-medium text-gray-700">グループ</label>
@@ -521,6 +525,15 @@ const WorkerMyPage: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleLogout}
+            className="mt-6 px-6 py-3 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors mb-6"
+          >
+            ログアウト
+          </button>
         </div>
       </div>
 
