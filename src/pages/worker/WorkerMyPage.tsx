@@ -42,6 +42,7 @@ const WorkerMyPage: React.FC = () => {
   const [workerId, setWorkerId] = useState<number | null>(null);
 
   const unmannedPath = new URL("../../assets/unmanned.png", import.meta.url).href;
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
   
   // デフォルト値
   const defaultProfile: UserProfile = {
@@ -274,8 +275,12 @@ const WorkerMyPage: React.FC = () => {
       <header className="bg-green-600 text-white py-4 px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-2">
-              <Menu className="w-5 h-5 text-gray-600" />
+            <div className="bg-white rounded-md p-1 w-8">
+              <img 
+                src={logoPath}
+                alt="ロゴ"
+                className="w-full h-full object-cover"
+              />
             </div>
             <h1 className="text-xl font-medium">マイページ</h1>
           </div>

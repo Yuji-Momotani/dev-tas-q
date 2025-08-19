@@ -10,6 +10,8 @@ const WorkerLoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -87,8 +89,12 @@ const WorkerLoginPage: React.FC = () => {
       {/* Header */}
       <header className="bg-green-600 text-white py-4 px-6">
         <div className="flex items-center space-x-3">
-          <div className="bg-white rounded-md p-2">
-            <Menu className="w-5 h-5 text-gray-600" />
+          <div className="bg-white rounded-md p-1 w-8">
+            <img 
+              src={logoPath}
+              alt="ロゴ"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-xl font-medium">ログイン</h1>
         </div>
@@ -99,8 +105,12 @@ const WorkerLoginPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo and Title */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-full mb-4">
-              <User className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
+              <img 
+                src={logoPath}
+                alt="ロゴ"
+                className="w-full h-full object-cover"
+              />
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">タスQ ログイン</h2>
           </div>

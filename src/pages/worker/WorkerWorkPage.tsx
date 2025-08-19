@@ -20,6 +20,8 @@ const WorkerWorkPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [videoThumbnails, setVideoThumbnails] = useState<{[key: number]: string}>({});
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   // 作業者の認証状態と作業データを取得
   useEffect(() => {
     const fetchWorkerWork = async () => {
@@ -105,10 +107,10 @@ const WorkerWorkPage: React.FC = () => {
     }
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/worker/login');
-  };
+  // const handleLogout = async () => {
+  //   await supabase.auth.signOut();
+  //   navigate('/worker/login');
+  // };
 
   const handleMyPage = () => {
     navigate('/worker/mypage');
@@ -192,8 +194,12 @@ const WorkerWorkPage: React.FC = () => {
       <header className="bg-green-600 text-white py-4 px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-2">
-              <Menu className="w-5 h-5 text-gray-600" />
+            <div className="bg-white rounded-md p-1 w-8">
+              <img 
+                src={logoPath}
+                alt="ロゴ"
+                className="w-full h-full object-cover"
+              />
             </div>
             <h1 className="text-xl font-medium">作業画面</h1>
           </div>
