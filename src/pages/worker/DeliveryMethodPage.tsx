@@ -138,6 +138,10 @@ const DeliveryMethodPage: React.FC = () => {
     }
   };
 
+  const handleBackToWork = () => {
+    navigate('/worker/work');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -161,6 +165,13 @@ const DeliveryMethodPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="p-4">
+        <button
+          onClick={handleBackToWork}
+          className="px-6 py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors mb-6"
+        >
+          作業画面へ戻る
+        </button>
+
         {/* エラーメッセージ */}
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
