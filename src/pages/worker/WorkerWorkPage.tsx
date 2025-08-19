@@ -306,6 +306,8 @@ const WorkerWorkPage: React.FC = () => {
                       <h4 className="text-2xl font-semibold text-gray-700">
                         {work.work_title || '作業タイトル'}
                       </h4>
+                    </div>
+                    <div className="flex items-center space-x-4 mb-6">
                       <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-medium text-white ${getStatusColor(work.status || 0)}`}>
                         {getStatusText(work.status || 0)}
                       </span>
