@@ -69,11 +69,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
     e.preventDefault();
     onSearch({ query, startDate, endDate, selectedSkill, selectedGroup });
   };
-
+{/*<form onSubmit={handleSubmit} className="flex space-x-2">
+*/}
   return (
-    <form onSubmit={handleSubmit} className="flex space-x-2">
+    <>
       <button
-        type="submit"
+        onClick={handleSubmit}
         className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center"
       >
         <Search size={16} className="mr-1" />
@@ -136,8 +137,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           ))}
         </select>
       </div>
-    </form>
+    </>
   );
+  {/*</form>*/}
 };
 
 export default SearchBar;

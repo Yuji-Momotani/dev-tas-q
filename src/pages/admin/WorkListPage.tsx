@@ -35,6 +35,8 @@ const WorkListPage: React.FC = () => {
   const [selectedWorker, setSelectedWorker] = useState('');
   const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   // モーダル状態
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
@@ -467,8 +469,12 @@ const WorkListPage: React.FC = () => {
       {/* Header */}
       <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-2">
-            <span className="text-gray-600 text-sm">⋮⋮⋮</span>
+          <div className="bg-white rounded-md p-1 w-8">
+            <img 
+              src={logoPath}
+              alt="ロゴ"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-lg font-medium">作業状況一覧</h1>
         </div>
@@ -629,7 +635,7 @@ const WorkListPage: React.FC = () => {
                     key={item.id} 
                     className="hover:bg-gray-50"
                   >
-                    <td className="border border-gray-300 px-4 py-3 text-center">
+                    <td className="border border-gray-300 px-4 py-3 text-center flex justify-center">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -647,7 +653,7 @@ const WorkListPage: React.FC = () => {
                     >
                       #{item.id} / {item.title}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
+                    <td className="border border-gray-300 px-4 py-3 text-gray-500">
                       <WorkStatusBadge status={item.status} />
                     </td>
                     <td 
@@ -693,7 +699,7 @@ const WorkListPage: React.FC = () => {
                         <span className="text-gray-300">-</span>
                       )}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-center">
+                    <td className="border border-gray-300 px-4 py-3 text-center flex justify-center">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

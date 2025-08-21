@@ -28,6 +28,8 @@ const AccountManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   useEffect(() => {
     fetchAdmins();
   }, []);
@@ -194,8 +196,12 @@ const AccountManagementPage: React.FC = () => {
       {/* Header */}
       <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-2">
-            <span className="text-gray-600 text-sm">⋮⋮⋮</span>
+          <div className="bg-white rounded-md p-1 w-8">
+            <img 
+              src={logoPath}
+              alt="ロゴ"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-lg font-medium">アカウント管理</h1>
         </div>
