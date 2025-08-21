@@ -9,6 +9,8 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -84,8 +86,12 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-gray-100">
       <header className="bg-green-600 text-white py-3 px-4 flex items-center">
         <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-2">
-            <span className="text-gray-600">⋮</span>
+          <div className="bg-white rounded-md p-1 w-8">
+            <img 
+              src={logoPath}
+              alt="ロゴ"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-lg font-medium">ログイン</h1>
         </div>

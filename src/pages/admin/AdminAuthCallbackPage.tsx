@@ -18,6 +18,8 @@ const AdminAuthCallbackPage: React.FC = () => {
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [isEmailChange, setIsEmailChange] = useState(false);
 
+  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
+
   useEffect(() => {
     handleAuthCallback();
   }, []);
@@ -195,8 +197,12 @@ const AdminAuthCallbackPage: React.FC = () => {
       {/* Header */}
       <header className="bg-green-600 text-white py-3 px-4 flex items-center">
         <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-2">
-            <span className="text-gray-600 text-sm">⋮⋮⋮</span>
+          <div className="bg-white rounded-md p-1 w-8">
+            <img 
+              src={logoPath}
+              alt="ロゴ"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-lg font-medium">パスワード変更</h1>
         </div>
