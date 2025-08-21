@@ -38,6 +38,7 @@ const WorkerDetailPage: React.FC = () => {
   const [editedWorker, setEditedWorker] = useState<WorkerDetail | null>(null);
   const [skillOptions, setSkillOptions] = useState<{ id: string; rank: string }[]>([]);
 
+  const unmannedPath = new URL("../../assets/unmanned.png", import.meta.url).href;
   const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
   // 認証チェックとデータ取得
@@ -431,6 +432,14 @@ const WorkerDetailPage: React.FC = () => {
 
         <div className="bg-white rounded-md shadow-sm p-6">
           <div className="mb-6 flex space-x-2">
+            {!isEditing && (
+              <button
+                onClick={handleWorkerList}
+                className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+              >
+                一覧に戻る
+              </button>
+            )}
             {!isEditing ? (
               <button
                 onClick={handleEdit}
@@ -442,18 +451,18 @@ const WorkerDetailPage: React.FC = () => {
             ) : (
               <>
                 <button
-                  onClick={handleSave}
-                  className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                >
-                  <Save size={16} />
-                  <span>保存</span>
-                </button>
-                <button
                   onClick={handleCancel}
                   className="flex items-center space-x-1 px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
                 >
                   <X size={16} />
                   <span>キャンセル</span>
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  <Save size={16} />
+                  <span>保存</span>
                 </button>
               </>
             )}
@@ -578,7 +587,13 @@ const WorkerDetailPage: React.FC = () => {
               {/* グループ表示エリア */}
               <div className="border-b border-gray-200 pb-4">
                 <div className="h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4 relative">
-                  <span className="text-2xl text-gray-400">A</span>
+                  <div className="w-20 h-20 text-2xl text-gray-400">
+                    <img 
+                      src={unmannedPath}
+                      alt="プロフィール写真"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   {/* ランク表示（円） */}
                   <div className="absolute top-2 right-2">
                     {isEditing ? (

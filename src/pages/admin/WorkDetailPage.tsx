@@ -566,18 +566,18 @@ const WorkDetailPage: React.FC = () => {
             ) : (
               <>
                 <button
-                  onClick={handleSave}
-                  className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                >
-                  <Save size={16} />
-                  <span>保存</span>
-                </button>
-                <button
                   onClick={handleCancel}
                   className="flex items-center space-x-1 px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
                 >
                   <X size={16} />
                   <span>キャンセル</span>
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  <Save size={16} />
+                  <span>保存</span>
                 </button>
               </>
             )}

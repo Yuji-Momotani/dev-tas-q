@@ -635,7 +635,7 @@ const WorkListPage: React.FC = () => {
                     key={item.id} 
                     className="hover:bg-gray-50"
                   >
-                    <td className="border border-gray-300 px-4 py-3 text-center">
+                    <td className="border border-gray-300 px-4 py-3 text-center flex justify-center">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -653,7 +653,7 @@ const WorkListPage: React.FC = () => {
                     >
                       #{item.id} / {item.title}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
+                    <td className="border border-gray-300 px-4 py-3 text-gray-500">
                       <WorkStatusBadge status={item.status} />
                     </td>
                     <td 
@@ -699,7 +699,7 @@ const WorkListPage: React.FC = () => {
                         <span className="text-gray-300">-</span>
                       )}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-center">
+                    <td className="border border-gray-300 px-4 py-3 text-center flex justify-center">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
