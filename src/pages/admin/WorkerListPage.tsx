@@ -305,14 +305,46 @@ const WorkerListPage: React.FC = () => {
     setIsNotificationModalOpen(true);
   };
 
-  const handleFinalSend = () => {
-    if (notificationData) {
-      console.log('通達送信:', notificationData);
-      alert(`${notificationData.recipients.length}名の作業者に通達を送信しました。`);
+  const handleFinalSend = async () => {
+    if (!notificationData) return;
+
+    try {
+      // 選択された作業者の詳細情報を取得
+      const selectedWorkerDetails = workers.filter(worker => 
+        checkedItems.has(worker.id.toString())
+      );
+
+      // send_mailテーブルに各作業者分のレコードを挿入
+      const mailRecords = selectedWorkerDetails.map(worker => ({
+        worker_id: worker.id,
+        from: import.meta.env.VITE_MAIL_FROM_ADDRESS,
+        // TODO:現状ドメイン設定をしていないため、自身のメールアドレスしか送信できない
+				// to: worker.email,
+				to: 'kilroy.was.here1016@gmail.com',
+        subject: notificationData.title,
+        body: notificationData.content
+      }));
+
+      const { error } = await supabase
+        .from('send_mails')
+        .insert(mailRecords);
+
+      if (error) {
+        console.error('メール送信レコード挿入エラー:', error);
+        alert('メール送信の準備中にエラーが発生しました。');
+        return;
+      }
+
+      alert(`${notificationData.recipients.length}名の作業者にメールを送信しました。`);
+      
       // 送信後、チェックボックスをクリア
       setCheckedItems(new Set());
       setIsConfirmationModalOpen(false);
       setNotificationData(null);
+      
+    } catch (err) {
+      console.error('メール送信処理エラー:', err);
+      alert('メール送信中にエラーが発生しました。');
     }
   };
 
