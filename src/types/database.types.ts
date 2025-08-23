@@ -168,6 +168,47 @@ export type Database = {
         }
         Relationships: []
       }
+      send_mails: {
+        Row: {
+          body: string
+          created_at: string
+          from: string
+          id: number
+          send_at: string | null
+          subject: string
+          to: string
+          worker_id: number
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          from: string
+          id?: number
+          send_at?: string | null
+          subject: string
+          to: string
+          worker_id: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          from?: string
+          id?: number
+          send_at?: string | null
+          subject?: string
+          to?: string
+          worker_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "send_mail_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_videos: {
         Row: {
           created_admin_id: number | null
