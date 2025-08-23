@@ -15,7 +15,7 @@ interface WorkAddModalProps {
 const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
-    status: 0, // 0: 未選択, 1: 依頼予定, 2: 依頼中, 3: 進行中, 4: 配送中, 5: 集荷依頼中, 6: 持込待ち, 7: 完了
+    status: WorkStatus.REQUEST_PLANNED, // デフォルトを依頼予定に設定
     assignee: '',
     assigneeId: null as number | null,
     quantity: 0,
@@ -98,7 +98,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       newErrors.name = '作業名は必須です';
     }
 
-    if (!formData.status || formData.status === 0) {
+    if (!formData.status) {
       newErrors.status = '進捗は必須です';
     }
 
@@ -153,7 +153,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
   const handleClose = () => {
     setFormData({
       name: '',
-      status: 0,
+      status: WorkStatus.REQUEST_PLANNED,
       assignee: '',
       assigneeId: null,
       quantity: 0,
@@ -204,7 +204,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
           {/* 進捗 (必須) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              進捗 <span className="text-red-500">*</span>
+              進捗
             </label>
             <select
               value={formData.status}
@@ -213,7 +213,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
                 errors.status ? 'border-red-500' : 'border-gray-300'
               }`}
             >
-              <option value={0}>選択してください</option>
               <option value={WorkStatus.REQUEST_PLANNED}>依頼予定</option>
               <option value={WorkStatus.REQUESTING}>依頼中</option>
               <option value={WorkStatus.IN_PROGRESS}>進行中</option>
