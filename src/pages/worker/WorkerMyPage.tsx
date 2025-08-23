@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Edit, Save, X } from 'lucide-react';
+import { Menu, LogOut, Edit, Save, X, Camera } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
 import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
@@ -42,6 +42,8 @@ const WorkerMyPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [workerId, setWorkerId] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string>('');
 
   const unmannedPath = new URL("../../assets/unmanned.png", import.meta.url).href;
   const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
@@ -139,6 +141,15 @@ const WorkerMyPage: React.FC = () => {
         
         const sortedWorks = sortWorkItems(workItemsForSort);
 
+        // プロフィール画像のURLを取得
+        let imageUrl = '';
+        if (workerData.image_url) {
+          const { data } = await supabase.storage
+            .from('worker-images')
+            .createSignedUrl(workerData.image_url, 3600); // 1時間有効
+          imageUrl = data?.signedUrl || '';
+        }
+
         const profile: UserProfile = {
           name: workerData.name || '未設定',
           birthDate: workerData.birthday ? new Date(workerData.birthday).toLocaleDateString('ja-JP').replace(/\//g, '.') : '',
@@ -146,7 +157,7 @@ const WorkerMyPage: React.FC = () => {
           nextVisitDate: workerData.next_visit_date ? new Date(workerData.next_visit_date).toLocaleDateString('ja-JP').replace(/\//g, '.') : '',
           email: workerData.email || user.email || '未設定',
           password: '********',
-          profileImage: '',
+          profileImage: imageUrl,
           group: typedWorker.groups?.name || '未設定',
           skills: skills,
           workHistory: sortedWorks.map(work => ({
@@ -155,6 +166,8 @@ const WorkerMyPage: React.FC = () => {
             status: work.status
           }))
         };
+
+        setProfileImageUrl(imageUrl);
 
         setUserProfile(profile);
         setEditedProfile(profile);
@@ -243,6 +256,92 @@ const WorkerMyPage: React.FC = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !workerId) return;
+
+    // ファイルサイズチェック（5MB制限）
+    if (file.size > 5 * 1024 * 1024) {
+      setError('ファイルサイズは5MB以下にしてください');
+      return;
+    }
+
+    // ファイル形式チェック
+    if (!file.type.startsWith('image/')) {
+      setError('画像ファイルを選択してください');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError('');
+
+      // ファイル名を生成（private/worker_id + timestamp + 拡張子）
+      const fileExt = file.name.split('.').pop();
+      const fileName = `private/${workerId}_${Date.now()}.${fileExt}`;
+
+      // 既存の画像がある場合は削除
+      if (profileImageUrl) {
+        // データベースから現在のimage_urlを取得して削除
+        const { data: currentWorker } = await supabase
+          .from('workers')
+          .select('image_url')
+          .eq('id', workerId)
+          .single();
+        
+        if (currentWorker?.image_url) {
+          await supabase.storage.from('worker-images').remove([currentWorker.image_url]);
+        }
+      }
+
+      // 新しい画像をアップロード
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('worker-images')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error('画像アップロードエラー:', uploadError);
+        setError('画像のアップロードに失敗しました');
+        return;
+      }
+
+      // データベースを更新
+      const { error: updateError } = await supabase
+        .from('workers')
+        .update({ 
+          image_url: fileName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workerId);
+
+      if (updateError) {
+        console.error('画像URL更新エラー:', updateError);
+        setError('画像情報の更新に失敗しました');
+        return;
+      }
+
+      // 新しい画像URLを取得して表示を更新
+      const { data: signedUrlData } = await supabase.storage
+        .from('worker-images')
+        .createSignedUrl(fileName, 3600);
+
+      const newImageUrl = signedUrlData?.signedUrl || '';
+      setProfileImageUrl(newImageUrl);
+      setUserProfile(prev => ({ ...prev, profileImage: newImageUrl }));
+      setEditedProfile(prev => ({ ...prev, profileImage: newImageUrl }));
+
+    } catch (err) {
+      console.error('画像アップロード処理エラー:', err);
+      setError('画像のアップロード中にエラーが発生しました');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const triggerImageUpload = () => {
+    document.getElementById('image-upload-input')?.click();
   };
 
 
@@ -445,14 +544,42 @@ const WorkerMyPage: React.FC = () => {
           {/* Group and Skills Section */}
           <div className="mb-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Group */}
+              {/* Profile Image and Group */}
               <div>
-                <div className="p-4 flex items-center justify-center w-24 h-24 rounded-full text-4xl font-bold text-white mb-4 mx-auto shadow-lg">
-                  <img 
-                    src={unmannedPath}
-                    alt={userProfile.name}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="relative w-24 h-24 mx-auto mb-4">
+                  <div className="w-24 h-24 rounded-full overflow-hidden shadow-lg bg-gray-200">
+                    <img 
+                      src={userProfile.profileImage || unmannedPath}
+                      alt={userProfile.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = unmannedPath;
+                      }}
+                    />
+                  </div>
+                  {isEditing && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={triggerImageUpload}
+                        disabled={uploading}
+                        className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {uploading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                      </button>
+                      <input
+                        id="image-upload-input"
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </>
+                  )}
                 </div>
                 <div className="text-center">
                   <label className="text-sm font-medium text-gray-700">グループ</label>
