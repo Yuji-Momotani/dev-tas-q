@@ -11,6 +11,7 @@ import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { sortWorkItems } from '../../utils/workSort';
 
 // Supabaseのworks型を拡張してWork型に対応
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
@@ -74,8 +75,7 @@ const WorkListPage: React.FC = () => {
             unit_price_ratio
           )
         `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .is('deleted_at', null);
 
       if (error) {
         // JWT期限切れまたは認証エラーの詳細チェック
@@ -104,8 +104,11 @@ const WorkListPage: React.FC = () => {
         workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
       }));
 
-      setWorkItems(convertedItems);
-      setFilteredItems(convertedItems);
+      // ソート処理を適用
+      const sortedItems = sortWorkItems(convertedItems);
+
+      setWorkItems(sortedItems);
+      setFilteredItems(sortedItems);
     } catch (err) {
       console.error('データ取得エラー:', err);
       setError('作業データの取得に失敗しました');
@@ -209,7 +212,7 @@ const WorkListPage: React.FC = () => {
     navigate('/admin/work-videos');
   };
 
-  // 検索フィルターを適用する関数
+  // 検索フィルターとソートを適用する関数
   const applyFilters = () => {
     let filtered = [...workItems];
 
@@ -242,7 +245,9 @@ const WorkListPage: React.FC = () => {
       );
     }
 
-    setFilteredItems(filtered);
+    // ソート適用
+    const sortedFiltered = sortWorkItems(filtered);
+    setFilteredItems(sortedFiltered);
   };
 
   // 検索ボタンクリック時の処理
