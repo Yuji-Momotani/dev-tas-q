@@ -7,6 +7,7 @@ import WorkStatusBadge from '../../components/WorkStatusBadge';
 import GroupSelector from '../../components/GroupSelector';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
+import { sortWorkItems } from '../../utils/workSort';
 
 // Supabaseの型を拡張
 type WorkerWithRelations = Database['public']['Tables']['workers']['Row'] & {
@@ -158,18 +159,27 @@ const WorkerDetailPage: React.FC = () => {
           rankName: skill.m_rank?.rank || undefined,
           comment: skill.comment || undefined
         })),
-        workHistory: (worker.works || []).map(work => ({
-          work: {
+        workHistory: (() => {
+          // 作業履歴をWork型の配列に変換
+          const works = (worker.works || []).map(work => ({
             id: work.id,
             title: work.work_title || '',
             status: (work.status || WorkStatus.REQUEST_PLANNED) as WorkStatus,
             quantity: 0,
             unitPrice: 0
-          },
-          assignedAt: new Date(),
-          startedAt: work.status === WorkStatus.IN_PROGRESS ? new Date() : undefined,
-          completedAt: work.status === WorkStatus.COMPLETED ? new Date() : undefined
-        }))
+          }));
+          
+          // ソート処理を適用
+          const sortedWorks = sortWorkItems(works);
+          
+          // ソート済みのWorkをWorkHistoryに変換
+          return sortedWorks.map(work => ({
+            work,
+            assignedAt: new Date(),
+            startedAt: work.status === WorkStatus.IN_PROGRESS ? new Date() : undefined,
+            completedAt: work.status === WorkStatus.COMPLETED ? new Date() : undefined
+          }));
+        })()
       };
 
       setWorkerDetail(detail);
