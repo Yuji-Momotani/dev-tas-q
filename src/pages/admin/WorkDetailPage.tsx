@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
-import { WorkStatus } from '../../constants/workStatus';
+import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
 import { Edit, Save, X, Video } from 'lucide-react';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
 import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '../../utils/video';
@@ -340,28 +340,6 @@ const WorkDetailPage: React.FC = () => {
         ...editedItem,
         [field]: value
       });
-    }
-  };
-
-  // ステータス番号を日本語に変換
-  const getStatusText = (status: number | null): string => {
-    switch (status) {
-      case WorkStatus.NO_PLAN: return '予定なし';
-      case WorkStatus.PLANNED: return '予定';
-      case WorkStatus.IN_PROGRESS: return '着手中';
-      case WorkStatus.COMPLETED: return '完了';
-      default: return '予定なし';
-    }
-  };
-
-  // ステータス番号からバッジのスタイルを取得
-  const getStatusBadgeClass = (status: number | null): string => {
-    switch (status) {
-      case WorkStatus.NO_PLAN: return 'bg-gray-100 text-gray-800';
-      case WorkStatus.PLANNED: return 'bg-yellow-100 text-yellow-800';
-      case WorkStatus.IN_PROGRESS: return 'bg-blue-100 text-blue-800';
-      case WorkStatus.COMPLETED: return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -731,8 +709,8 @@ const WorkDetailPage: React.FC = () => {
               <div className="border-b border-gray-200 pb-4 flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">進捗ステータス</label>
                 <div className="ml-8">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(workItem.status)}`}>
-                    {getStatusText(workItem.status)}
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getWorkStatusBadgeClass(workItem.status as WorkStatus)}`}>
+                    {getWorkStatusLabel(workItem.status as WorkStatus)}
                   </span>
                   {isEditing && (
                     <div className="text-xs text-gray-500 mt-1">

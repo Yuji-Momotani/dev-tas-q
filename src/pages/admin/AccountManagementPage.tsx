@@ -20,10 +20,10 @@ const AccountManagementPage: React.FC = () => {
   const [formData, setFormData] = useState({
     accountName: '',
     email: '',
-    hasWorkListView: false,
-    hasWorkListCreate: false,
-    hasWorkListUpdate: false,
-    hasWorkListDelete: false
+    hasWorkListView: true,
+    hasWorkListCreate: true,
+    hasWorkListUpdate: true,
+    hasWorkListDelete: true
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -80,10 +80,10 @@ const AccountManagementPage: React.FC = () => {
     setFormData({
       accountName: '',
       email: '',
-      hasWorkListView: false,
-      hasWorkListCreate: false,
-      hasWorkListUpdate: false,
-      hasWorkListDelete: false
+      hasWorkListView: true,
+      hasWorkListCreate: true,
+      hasWorkListUpdate: true,
+      hasWorkListDelete: true
     });
     setError('');
     setLoading(false);
