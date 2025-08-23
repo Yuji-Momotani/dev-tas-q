@@ -261,6 +261,7 @@ export type Database = {
           email: string | null
           group_id: number | null
           id: number
+          image_url: string | null
           name: string | null
           next_visit_date: string | null
           unit_price_ratio: number | null
@@ -275,6 +276,7 @@ export type Database = {
           email?: string | null
           group_id?: number | null
           id?: number
+          image_url?: string | null
           name?: string | null
           next_visit_date?: string | null
           unit_price_ratio?: number | null
@@ -289,6 +291,7 @@ export type Database = {
           email?: string | null
           group_id?: number | null
           id?: number
+          image_url?: string | null
           name?: string | null
           next_visit_date?: string | null
           unit_price_ratio?: number | null
