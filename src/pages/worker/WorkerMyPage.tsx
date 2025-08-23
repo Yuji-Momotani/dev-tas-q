@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut, Edit, Save, X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
+import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
+import { sortWorkItems } from '../../utils/workSort';
 
 type WorkerType = Tables<'workers'> & {
   groups?: {
@@ -106,10 +108,9 @@ const WorkerMyPage: React.FC = () => {
         // 作業履歴を取得
         const { data: workHistory, error: workError } = await supabase
           .from('works')
-          .select('id, work_title, status')
+          .select('id, work_title, status, delivery_date')
           .eq('worker_id', workerData.id)
           .is('deleted_at', null)
-          .order('updated_at', { ascending: false })
           .limit(10);
 
         if (workError) {
@@ -122,6 +123,22 @@ const WorkerMyPage: React.FC = () => {
           skill.m_rank?.rank ? `${skill.m_rank.rank}: ${skill.comment || ''}` : skill.comment || ''
         ).join('\n') || 'スキル情報が登録されていません';
 
+        // workSort.tsで使用する形式に変換してソート
+        const workItemsForSort = (workHistory || []).map(work => ({
+          id: work.id,
+          workTitle: work.work_title || '',
+          status: work.status as WorkStatus,
+          deliveryDate: work.delivery_date ? new Date(work.delivery_date) : null,
+          // その他の必須フィールドはダミーデータを設定
+          workerId: workerData.id,
+          quantity: 0,
+          unitPrice: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }));
+        
+        const sortedWorks = sortWorkItems(workItemsForSort);
+
         const profile: UserProfile = {
           name: workerData.name || '未設定',
           birthDate: workerData.birthday ? new Date(workerData.birthday).toLocaleDateString('ja-JP').replace(/\//g, '.') : '',
@@ -132,10 +149,10 @@ const WorkerMyPage: React.FC = () => {
           profileImage: '',
           group: typedWorker.groups?.name || '未設定',
           skills: skills,
-          workHistory: (workHistory || []).map(work => ({
+          workHistory: sortedWorks.map(work => ({
             id: `#${work.id}`,
-            name: work.work_title || '未設定',
-            status: work.status || 0
+            name: work.workTitle || '未設定',
+            status: work.status
           }))
         };
 
@@ -228,35 +245,6 @@ const WorkerMyPage: React.FC = () => {
     }));
   };
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
-      case 3:
-        return 'bg-red-500';
-      case 4:
-        return 'bg-green-500';
-      case 2:
-        return 'bg-yellow-500';
-      case 1:
-        return 'bg-gray-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-  const getStatusText = (status: number) => {
-    switch (status) {
-      case 3:
-        return '着手中';
-      case 4:
-        return '完了';
-      case 2:
-        return '予定';
-      case 1:
-        return '予定なし';
-      default:
-        return '未設定';
-    }
-  };
 
   if (loading) {
     return (
@@ -502,8 +490,8 @@ const WorkerMyPage: React.FC = () => {
                   
                   {/* Status Badge */}
                   <div className="flex-shrink-0">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(work.status)}`}>
-                      {getStatusText(work.status)}
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getWorkStatusBadgeClass(work.status as WorkStatus)}`}>
+                      {getWorkStatusLabel(work.status as WorkStatus)}
                     </span>
                   </div>
                   
