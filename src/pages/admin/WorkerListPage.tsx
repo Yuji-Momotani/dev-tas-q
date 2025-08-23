@@ -319,8 +319,8 @@ const WorkerListPage: React.FC = () => {
         worker_id: worker.id,
         from: import.meta.env.VITE_MAIL_FROM_ADDRESS,
         // TODO:現状ドメイン設定をしていないため、自身のメールアドレスしか送信できない
-				// to: worker.email,
-				to: 'kilroy.was.here1016@gmail.com',
+        // to: worker.email,
+        to: 'kilroy.was.here1016@gmail.com',
         subject: notificationData.title,
         body: notificationData.content
       }));
