@@ -8,6 +8,7 @@ import GroupSelector from '../../components/GroupSelector';
 import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
 import { sortWorkItems } from '../../utils/workSort';
+import { getWorkerImageUrl } from '../../utils/image';
 
 // Supabaseの型を拡張
 type WorkerWithRelations = Database['public']['Tables']['workers']['Row'] & {
@@ -137,6 +138,9 @@ const WorkerDetailPage: React.FC = () => {
 
       const worker = data as WorkerWithRelations;
       
+      // プロフィール画像のURLを取得
+      const imageUrl = await getWorkerImageUrl(worker.image_url || '');
+      
       // WorkerDetail型に変換
       const detail: WorkerDetail = {
         id: worker.id,
@@ -148,6 +152,7 @@ const WorkerDetailPage: React.FC = () => {
         nextVisitDate: worker.next_visit_date ? new Date(worker.next_visit_date) : undefined,
         unitPriceRatio: worker.unit_price_ratio || undefined,
         groupID: worker.group_id || undefined,
+        imageUrl: imageUrl || undefined,
         group: worker.groups ? {
           id: worker.group_id || 0,
           name: worker.groups.name || ''
@@ -596,14 +601,26 @@ const WorkerDetailPage: React.FC = () => {
             <div className="space-y-6">
               {/* グループ表示エリア */}
               <div className="border-b border-gray-200 pb-4">
-                <div className="h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4 relative">
-                  <div className="w-20 h-20 text-2xl text-gray-400">
+                <div className="h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4 relative overflow-hidden">
+                  {editedWorker.imageUrl ? (
                     <img 
-                      src={unmannedPath}
+                      src={editedWorker.imageUrl}
                       alt="プロフィール写真"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Image load error:', e);
+                        e.currentTarget.src = unmannedPath;
+                      }}
                     />
-                  </div>
+                  ) : (
+                    <div className="w-20 h-20 text-2xl text-gray-400">
+                      <img 
+                        src={unmannedPath}
+                        alt="デフォルトプロフィール写真"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                   {/* ランク表示（円） */}
                   <div className="absolute top-2 right-2">
                     {isEditing ? (

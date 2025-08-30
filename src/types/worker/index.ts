@@ -8,6 +8,7 @@ export interface Worker {
   nextVisitDate?: Date;
   unitPriceRatio?: number;
   groupID?: number;
+  imageUrl?: string;
   lastWorkDate?: Date;
   inProgressWork?: string;
   plannedWork?: string;
