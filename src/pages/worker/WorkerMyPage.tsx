@@ -6,6 +6,7 @@ import { Tables } from '../../types/database.types';
 import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
 import { sortWorkItems } from '../../utils/workSort';
 import { getWorkerImageUrl } from '../../utils/image';
+import { handleSupabaseError } from '../../utils/auth';
 
 type WorkerType = Tables<'workers'> & {
   groups?: {
@@ -100,7 +101,16 @@ const WorkerMyPage: React.FC = () => {
           .is('deleted_at', null)
           .single();
 
-        if (workerError || !workerData) {
+        if (workerError) {
+          try {
+            handleSupabaseError(workerError, navigate, 'worker', '作業者情報取得');
+          } catch (e) {
+            setError('作業者情報が見つかりません');
+            return;
+          }
+        }
+        
+        if (!workerData) {
           setError('作業者情報が見つかりません');
           return;
         }
@@ -117,7 +127,11 @@ const WorkerMyPage: React.FC = () => {
           .limit(10);
 
         if (workError) {
-          console.error('作業履歴取得エラー:', workError);
+          try {
+            handleSupabaseError(workError, navigate, 'worker', '作業履歴取得');
+          } catch (e) {
+            console.error('作業履歴取得エラー:', workError);
+          }
         }
 
         // プロフィールデータを整形

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
 import QrScanner from 'qr-scanner';
 import { supabase } from '../../utils/supabase';
+import { handleSupabaseError } from '../../utils/auth';
 
 const QRScannerPage: React.FC = () => {
   const navigate = useNavigate();
@@ -53,8 +54,12 @@ const QRScannerPage: React.FC = () => {
         .single();
 
       if (workerError || !workerData) {
-        setError('作業者情報が見つかりません');
-        return;
+        try {
+          handleSupabaseError(workerError, navigate, 'worker', 'worker information retrieval');
+        } catch (e) {
+          setError('作業者情報が見つかりません');
+          return;
+        }
       }
 
       setCurrentWorkerId(workerData.id);
@@ -218,8 +223,12 @@ const QRScannerPage: React.FC = () => {
         .single();
 
       if (checkError || !workData) {
-        setError('作業情報が見つかりません');
-        return;
+        try {
+          handleSupabaseError(checkError, navigate, 'worker', 'work verification');
+        } catch (e) {
+          setError('作業情報が見つかりません');
+          return;
+        }
       }
 
       // ステータスチェック
@@ -245,8 +254,12 @@ const QRScannerPage: React.FC = () => {
 
       if (updateError) {
         console.error('作業ステータス更新エラー:', updateError);
-        setError('作業の開始に失敗しました');
-        return;
+        try {
+          handleSupabaseError(updateError, navigate, 'worker', 'work status update');
+        } catch (e) {
+          setError('作業の開始に失敗しました');
+          return;
+        }
       }
 
       // 成功メッセージ表示

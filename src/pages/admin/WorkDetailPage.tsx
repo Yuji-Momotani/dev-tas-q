@@ -7,6 +7,7 @@ import { Edit, Save, X, Video } from 'lucide-react';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
 import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '../../utils/video';
 import { WorkVideo } from '../../types/work';
+import { handleSupabaseError } from '../../utils/auth';
 
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
   workers?: {
@@ -75,15 +76,7 @@ const WorkDetailPage: React.FC = () => {
           return;
         }
         
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin', '作業詳細取得時');
       }
 
       if (!data) {
@@ -156,15 +149,7 @@ const WorkDetailPage: React.FC = () => {
         .is('deleted_at', null);
 
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       // データをWorkVideo型に変換
@@ -216,15 +201,7 @@ const WorkDetailPage: React.FC = () => {
         .order('video_title');
 
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       // データをWorkVideo型に変換
@@ -311,15 +288,7 @@ const WorkDetailPage: React.FC = () => {
         .is('deleted_at', null);
 
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       // データを再取得して表示を更新
@@ -377,15 +346,7 @@ const WorkDetailPage: React.FC = () => {
         .eq('id', Number(id));
         
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
       
       // データを再取得して表示を更新

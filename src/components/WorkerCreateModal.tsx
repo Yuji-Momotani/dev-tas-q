@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserPlus, X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { inviteWorkerByEmail, supabaseAdmin } from '../utils/supabaseAdmin';
 import type { Database } from '../types/database.types';
 import GroupSelector from './GroupSelector';
+import { handleSupabaseError } from '../utils/auth';
 
 
 interface WorkerCreateModalProps {
@@ -24,6 +26,7 @@ interface WorkerFormData {
 }
 
 const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, onSave }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<WorkerFormData>({
     name: '',
     email: '',
@@ -158,13 +161,11 @@ const WorkerCreateModal: React.FC<WorkerCreateModalProps> = ({ isOpen, onClose, 
           alert('作業者の作成に失敗しました。');
         }
 
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          alert('セッションが期限切れです。再度ログインしてください。');
-          return;
+        try {
+          handleSupabaseError(error, navigate, 'admin');
+        } catch {
+          // handleSupabaseError throws the error if it's not JWT related
+          // Continue with the existing error handling logic
         }
         return; // エラー時は処理を終了
       }

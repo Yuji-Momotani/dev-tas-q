@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import type { Database } from '../types/database.types';
 import { WorkStatus } from '../constants/workStatus';
+import { handleSupabaseError } from '../utils/auth';
 
 type Worker = Database['public']['Tables']['workers']['Row'];
 
@@ -13,6 +15,7 @@ interface WorkAddModalProps {
 }
 
 const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     status: WorkStatus.REQUEST_PLANNED, // デフォルトを依頼予定に設定
@@ -128,15 +131,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
         .insert([workData]);
 
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          alert('セッションが期限切れです。再度ログインしてください。');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       alert('作業が正常に追加されました。');

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Menu, LogOut, Truck, Mail, Package } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { WorkStatus } from '../../constants/workStatus';
+import { handleSupabaseError } from '../../utils/auth';
 
 const DeliveryMethodPage: React.FC = () => {
   const navigate = useNavigate();
@@ -53,8 +54,12 @@ const DeliveryMethodPage: React.FC = () => {
           .single();
 
         if (workerError || !workerData) {
-          setError('作業者情報が見つかりません');
-          return;
+          try {
+            handleSupabaseError(workerError, navigate, 'worker', 'worker information retrieval');
+          } catch (e) {
+            setError('作業者情報が見つかりません');
+            return;
+          }
         }
 
         // 指定された作業IDが現在のユーザーの作業かつ着手中かを確認
@@ -68,9 +73,13 @@ const DeliveryMethodPage: React.FC = () => {
           .single();
 
         if (workError || !workData) {
-          setError('指定された作業が見つからないか、完了権限がありません');
-          navigate('/worker/work');
-          return;
+          try {
+            handleSupabaseError(workError, navigate, 'worker', 'work validation');
+          } catch (e) {
+            setError('指定された作業が見つからないか、完了権限がありません');
+            navigate('/worker/work');
+            return;
+          }
         }
 
         setCurrentWorkId(completingWorkId);
@@ -106,8 +115,12 @@ const DeliveryMethodPage: React.FC = () => {
 
       if (updateError) {
         console.error('作業ステータス更新エラー:', updateError);
-        setError('作業完了の処理に失敗しました');
-        return;
+        try {
+          handleSupabaseError(updateError, navigate, 'worker', 'work completion status update');
+        } catch (e) {
+          setError('作業完了の処理に失敗しました');
+          return;
+        }
       }
 
       // ステータスに応じたメッセージを表示

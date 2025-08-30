@@ -12,6 +12,7 @@ import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { sortWorkItems } from '../../utils/workSort';
+import { handleSupabaseError } from '../../utils/auth';
 
 // Supabaseのworks型を拡張してWork型に対応
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
@@ -78,17 +79,7 @@ const WorkListPage: React.FC = () => {
         .is('deleted_at', null);
 
       if (error) {
-        // JWT期限切れまたは認証エラーの詳細チェック
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          console.log('JWT期限切れまたは認証エラーを検知:', error.message);
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       // Supabaseのデータ構造をWork型に変換
@@ -182,17 +173,7 @@ const WorkListPage: React.FC = () => {
         .is('deleted_at', null);
 
       if (error) {
-        // JWT期限切れまたは認証エラーの詳細チェック
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          console.log('作業者取得時にJWT期限切れを検知:', error.message);
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       setWorkers((data || []).map(worker => ({
@@ -329,15 +310,7 @@ const WorkListPage: React.FC = () => {
         .is('deleted_at', null);
 
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       alert('作業が完了しました。');
@@ -364,15 +337,7 @@ const WorkListPage: React.FC = () => {
         .is('deleted_at', null);
 
       if (error) {
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin');
       }
 
       alert('作業が削除されました。');

@@ -4,6 +4,7 @@ import { UserPlus, X } from 'lucide-react';
 import { inviteAdminByEmail, supabaseAdmin } from '../../utils/supabaseAdmin';
 import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
+import { handleSupabaseError, handleJwtExpiredError } from '../../utils/auth';
 
 type Admin = Database['public']['Tables']['admins']['Row'];
 type AdminRole = Database['public']['Tables']['admin_roles']['Row'];
@@ -141,15 +142,10 @@ const AccountManagementPage: React.FC = () => {
             setError(`管理者の作成に失敗しました。\n\n重要：管理者に以下の情報を連絡してください。\n- Supabase Authに残存するユーザー メールアドレス: ${formData.email}\n\n手動でSupabase Authからユーザーを削除する必要があります。`);
           }
         } else {
+          if (handleJwtExpiredError(adminError, navigate, 'admin')) {
+            return;
+          }
           setError('管理者の作成に失敗しました。');
-        }
-
-        if (adminError.message.includes('JWT') || 
-            adminError.message.includes('unauthorized') ||
-            adminError.message.includes('Invalid JWT') ||
-            adminError.message.includes('expired') ||
-            adminError.code === 'PGRST301') {
-          setError('セッションが期限切れです。再度ログインしてください。');
         }
         return;
       }
