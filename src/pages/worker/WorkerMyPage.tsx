@@ -5,6 +5,7 @@ import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
 import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
 import { sortWorkItems } from '../../utils/workSort';
+import { getWorkerImageUrl } from '../../utils/image';
 
 type WorkerType = Tables<'workers'> & {
   groups?: {
@@ -142,13 +143,7 @@ const WorkerMyPage: React.FC = () => {
         const sortedWorks = sortWorkItems(workItemsForSort);
 
         // プロフィール画像のURLを取得
-        let imageUrl = '';
-        if (workerData.image_url) {
-          const { data } = await supabase.storage
-            .from('worker-images')
-            .createSignedUrl(workerData.image_url, 3600); // 1時間有効
-          imageUrl = data?.signedUrl || '';
-        }
+        const imageUrl = await getWorkerImageUrl(workerData.image_url || '');
 
         const profile: UserProfile = {
           name: workerData.name || '未設定',
@@ -323,11 +318,7 @@ const WorkerMyPage: React.FC = () => {
       }
 
       // 新しい画像URLを取得して表示を更新
-      const { data: signedUrlData } = await supabase.storage
-        .from('worker-images')
-        .createSignedUrl(fileName, 3600);
-
-      const newImageUrl = signedUrlData?.signedUrl || '';
+      const newImageUrl = await getWorkerImageUrl(fileName);
       setProfileImageUrl(newImageUrl);
       setUserProfile(prev => ({ ...prev, profileImage: newImageUrl }));
       setEditedProfile(prev => ({ ...prev, profileImage: newImageUrl }));
