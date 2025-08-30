@@ -8,6 +8,7 @@ import SearchBar from '../../components/SearchBar';
 import { supabase } from '../../utils/supabase';
 import { WorkStatus } from '../../constants/workStatus';
 import { Worker } from '../../types/worker';
+import { handleSupabaseError } from '../../utils/auth';
 
 const WorkerListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -141,17 +142,8 @@ const WorkerListPage: React.FC = () => {
         .order('name');
 
       if (error) {
-        // JWT期限切れまたは認証エラーの詳細チェック
-        if (error.message.includes('JWT') || 
-            error.message.includes('unauthorized') ||
-            error.message.includes('Invalid JWT') ||
-            error.message.includes('expired') ||
-            error.code === 'PGRST301') {
-          console.log('作業者取得時にJWT期限切れを検知:', error.message);
-          navigate('/admin/login');
-          return;
-        }
-        throw error;
+        handleSupabaseError(error, navigate, 'admin', '作業者取得時');
+        return;
       }
 
       // データを変換

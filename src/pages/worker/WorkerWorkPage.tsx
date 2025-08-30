@@ -6,6 +6,7 @@ import { Tables } from '../../types/database.types';
 import { isValidYouTubeUrl, generateVideoThumbnail } from '../../utils/video';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
 import { WorkStatus, getWorkStatusLabel } from '../../constants/workStatus';
+import { handleSupabaseError } from '../../utils/auth';
 
 type WorkType = Tables<'works'> & {
   work_videos?: Tables<'work_videos'>;
@@ -46,8 +47,12 @@ const WorkerWorkPage: React.FC = () => {
           .single();
 
         if (workerError || !workerData) {
-          setError('作業者情報が見つかりません');
-          return;
+          try {
+            handleSupabaseError(workerError, navigate, 'worker', 'worker information retrieval');
+          } catch (e) {
+            setError('作業者情報が見つかりません');
+            return;
+          }
         }
 
         // 進行中の作業を全て取得
@@ -68,8 +73,12 @@ const WorkerWorkPage: React.FC = () => {
 
         if (workError) {
           console.error('作業データ取得エラー:', workError);
-          setError('作業データの取得に失敗しました');
-          return;
+          try {
+            handleSupabaseError(workError, navigate, 'worker', 'work data retrieval');
+          } catch (e) {
+            setError('作業データの取得に失敗しました');
+            return;
+          }
         }
 
         if (workData && workData.length > 0) {
