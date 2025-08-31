@@ -19,10 +19,14 @@ const AccountDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [permissions, setPermissions] = useState({
-    allowWorkingGet: false,
-    allowWorkingCreate: false,
-    allowWorkingUpdate: false,
-    allowWorkingDelete: false,
+    allowWorksView: false,
+    allowWorksEdit: false,
+    allowWorkersView: false,
+    allowWorkersEdit: false,
+    allowAccountsView: false,
+    allowAccountsEdit: false,
+    allowVideosView: false,
+    allowVideosEdit: false,
   });
 
   const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
@@ -71,10 +75,14 @@ const AccountDetailPage: React.FC = () => {
       
       // 権限設定をstateに設定
       setPermissions({
-        allowWorkingGet: adminWithRole.admin_roles?.allow_working_get || false,
-        allowWorkingCreate: adminWithRole.admin_roles?.allow_working_create || false,
-        allowWorkingUpdate: adminWithRole.admin_roles?.allow_working_update || false,
-        allowWorkingDelete: adminWithRole.admin_roles?.allow_working_delete || false,
+        allowWorksView: adminWithRole.admin_roles?.allow_works_view || false,
+        allowWorksEdit: adminWithRole.admin_roles?.allow_works_edit || false,
+        allowWorkersView: adminWithRole.admin_roles?.allow_workers_view || false,
+        allowWorkersEdit: adminWithRole.admin_roles?.allow_workers_edit || false,
+        allowAccountsView: adminWithRole.admin_roles?.allow_accounts_view || false,
+        allowAccountsEdit: adminWithRole.admin_roles?.allow_accounts_edit || false,
+        allowVideosView: adminWithRole.admin_roles?.allow_videos_view || false,
+        allowVideosEdit: adminWithRole.admin_roles?.allow_videos_edit || false,
       });
     } catch (err) {
       console.error('管理者詳細取得処理エラー:', err);
@@ -121,10 +129,14 @@ const AccountDetailPage: React.FC = () => {
       const { error } = await supabase
         .from('admin_roles')
         .update({
-          allow_working_get: permissions.allowWorkingGet,
-          allow_working_create: permissions.allowWorkingCreate,
-          allow_working_update: permissions.allowWorkingUpdate,
-          allow_working_delete: permissions.allowWorkingDelete,
+          allow_works_view: permissions.allowWorksView,
+          allow_works_edit: permissions.allowWorksEdit,
+          allow_workers_view: permissions.allowWorkersView,
+          allow_workers_edit: permissions.allowWorkersEdit,
+          allow_accounts_view: permissions.allowAccountsView,
+          allow_accounts_edit: permissions.allowAccountsEdit,
+          allow_videos_view: permissions.allowVideosView,
+          allow_videos_edit: permissions.allowVideosEdit,
           updated_at: new Date().toISOString()
         })
         .eq('id', admin.admin_roles.id);
@@ -299,40 +311,19 @@ const AccountDetailPage: React.FC = () => {
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-gray-300"></th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-r border-gray-300">閲覧</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-r border-gray-300">登録</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-r border-gray-300">更新</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">削除</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">編集</th>
                     </tr>
                   </thead>
                   <tbody>
+                    {/* 作業状況一覧・作業詳細 */}
                     <tr className="border-t border-gray-300">
-                      <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">作業状況一覧</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">作業状況一覧・作業詳細</td>
                       <td className="px-4 py-3 text-center border-r border-gray-300">
                         <div className="flex items-center justify-center">
                           <input
                             type="checkbox"
-                            checked={permissions.allowWorkingGet}
-                            onChange={(e) => handlePermissionChange('allowWorkingGet', e.target.checked)}
-                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center border-r border-gray-300">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={permissions.allowWorkingCreate}
-                            onChange={(e) => handlePermissionChange('allowWorkingCreate', e.target.checked)}
-                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center border-r border-gray-300">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={permissions.allowWorkingUpdate}
-                            onChange={(e) => handlePermissionChange('allowWorkingUpdate', e.target.checked)}
+                            checked={permissions.allowWorksView}
+                            onChange={(e) => handlePermissionChange('allowWorksView', e.target.checked)}
                             className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                           />
                         </div>
@@ -341,8 +332,80 @@ const AccountDetailPage: React.FC = () => {
                         <div className="flex items-center justify-center">
                           <input
                             type="checkbox"
-                            checked={permissions.allowWorkingDelete}
-                            onChange={(e) => handlePermissionChange('allowWorkingDelete', e.target.checked)}
+                            checked={permissions.allowWorksEdit}
+                            onChange={(e) => handlePermissionChange('allowWorksEdit', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    {/* 作業者一覧・作業者詳細 */}
+                    <tr className="border-t border-gray-300">
+                      <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">作業者一覧・作業者詳細</td>
+                      <td className="px-4 py-3 text-center border-r border-gray-300">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowWorkersView}
+                            onChange={(e) => handlePermissionChange('allowWorkersView', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowWorkersEdit}
+                            onChange={(e) => handlePermissionChange('allowWorkersEdit', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    {/* アカウント管理・アカウント詳細 */}
+                    <tr className="border-t border-gray-300">
+                      <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">アカウント管理・アカウント詳細</td>
+                      <td className="px-4 py-3 text-center border-r border-gray-300">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowAccountsView}
+                            onChange={(e) => handlePermissionChange('allowAccountsView', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowAccountsEdit}
+                            onChange={(e) => handlePermissionChange('allowAccountsEdit', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    {/* 作業動画画面 */}
+                    <tr className="border-t border-gray-300">
+                      <td className="px-4 py-3 text-sm text-gray-900 border-r border-gray-300">作業動画画面</td>
+                      <td className="px-4 py-3 text-center border-r border-gray-300">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowVideosView}
+                            onChange={(e) => handlePermissionChange('allowVideosView', e.target.checked)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={permissions.allowVideosEdit}
+                            onChange={(e) => handlePermissionChange('allowVideosEdit', e.target.checked)}
                             className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                           />
                         </div>
@@ -356,10 +419,14 @@ const AccountDetailPage: React.FC = () => {
                   onClick={() => {
                     // 元の権限設定に戻す
                     setPermissions({
-                      allowWorkingGet: admin?.admin_roles?.allow_working_get || false,
-                      allowWorkingCreate: admin?.admin_roles?.allow_working_create || false,
-                      allowWorkingUpdate: admin?.admin_roles?.allow_working_update || false,
-                      allowWorkingDelete: admin?.admin_roles?.allow_working_delete || false,
+                      allowWorksView: admin?.admin_roles?.allow_works_view || false,
+                      allowWorksEdit: admin?.admin_roles?.allow_works_edit || false,
+                      allowWorkersView: admin?.admin_roles?.allow_workers_view || false,
+                      allowWorkersEdit: admin?.admin_roles?.allow_workers_edit || false,
+                      allowAccountsView: admin?.admin_roles?.allow_accounts_view || false,
+                      allowAccountsEdit: admin?.admin_roles?.allow_accounts_edit || false,
+                      allowVideosView: admin?.admin_roles?.allow_videos_view || false,
+                      allowVideosEdit: admin?.admin_roles?.allow_videos_edit || false,
                     });
                   }}
                   className="px-4 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"

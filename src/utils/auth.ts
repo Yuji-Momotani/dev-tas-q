@@ -14,7 +14,6 @@ export const isJwtExpiredError = (error: PostgrestError | Error): boolean => {
     errorMessage.includes('unauthorized') ||
     errorMessage.includes('Invalid JWT') ||
     errorMessage.includes('expired') ||
-    errorMessage.includes('JSON object requested, multiple (or no) rows returned') ||
     ('code' in error && error.code === 'PGRST301')
   );
 };

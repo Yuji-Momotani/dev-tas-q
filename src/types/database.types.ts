@@ -52,10 +52,14 @@ export type Database = {
       admin_roles: {
         Row: {
           admin_id: number | null
-          allow_working_create: boolean | null
-          allow_working_delete: boolean | null
-          allow_working_get: boolean | null
-          allow_working_update: boolean | null
+          allow_accounts_edit: boolean
+          allow_accounts_view: boolean
+          allow_videos_edit: boolean
+          allow_videos_view: boolean
+          allow_workers_edit: boolean
+          allow_workers_view: boolean
+          allow_works_edit: boolean
+          allow_works_view: boolean
           created_at: string | null
           deleted_at: string | null
           id: number
@@ -63,10 +67,14 @@ export type Database = {
         }
         Insert: {
           admin_id?: number | null
-          allow_working_create?: boolean | null
-          allow_working_delete?: boolean | null
-          allow_working_get?: boolean | null
-          allow_working_update?: boolean | null
+          allow_accounts_edit?: boolean
+          allow_accounts_view?: boolean
+          allow_videos_edit?: boolean
+          allow_videos_view?: boolean
+          allow_workers_edit?: boolean
+          allow_workers_view?: boolean
+          allow_works_edit?: boolean
+          allow_works_view?: boolean
           created_at?: string | null
           deleted_at?: string | null
           id?: number
@@ -74,10 +82,14 @@ export type Database = {
         }
         Update: {
           admin_id?: number | null
-          allow_working_create?: boolean | null
-          allow_working_delete?: boolean | null
-          allow_working_get?: boolean | null
-          allow_working_update?: boolean | null
+          allow_accounts_edit?: boolean
+          allow_accounts_view?: boolean
+          allow_videos_edit?: boolean
+          allow_videos_view?: boolean
+          allow_workers_edit?: boolean
+          allow_workers_view?: boolean
+          allow_works_edit?: boolean
+          allow_works_view?: boolean
           created_at?: string | null
           deleted_at?: string | null
           id?: number
