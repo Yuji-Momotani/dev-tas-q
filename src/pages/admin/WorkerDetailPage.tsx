@@ -601,7 +601,7 @@ const WorkerDetailPage: React.FC = () => {
             <div className="space-y-6">
               {/* グループ表示エリア */}
               <div className="border-b border-gray-200 pb-4">
-                <div className="h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4 relative overflow-hidden">
+                <div className="w-48 h-48 bg-gray-200 rounded-md flex items-center justify-center mb-4 relative overflow-hidden">
                   {editedWorker.imageUrl ? (
                     <img 
                       src={editedWorker.imageUrl}
