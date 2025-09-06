@@ -4,7 +4,7 @@ import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
 import AdminLayout from '../../components/AdminLayout';
 import { Work } from '../../types/work';
-import { Download, Printer, Trash2, Check } from 'lucide-react';
+import { Download, Printer, Trash2, Check, Plus, Search } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 import { QRCodeCanvas } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
@@ -438,16 +438,18 @@ const WorkListPage: React.FC = () => {
           <div className="flex flex-wrap gap-4 items-center mb-4">
             <button
               onClick={handleOpenAddModal}
-              className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
-              作業追加
+              <Plus size={16} />
+              <span>作業追加</span>
             </button>
             
             <button 
               onClick={handleSearch}
-              className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
-              検索
+              <Search size={16} />
+              <span>検索</span>
             </button>
             
             <div className="flex items-center space-x-2">

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import NotificationController from '../../components/NotificationController';
 import WorkerCreateModal from '../../components/WorkerCreateModal';
 import AdminLayout from '../../components/AdminLayout';
-import { Download} from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
 import { supabase } from '../../utils/supabase';
 import { WorkStatus } from '../../constants/workStatus';
@@ -272,9 +272,10 @@ const WorkerListPage: React.FC = () => {
           <div className="flex flex-wrap gap-4 items-end mb-4">
             <button
               onClick={handleAddWorker}
-              className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
-              作業者作成
+              <Plus size={16} />
+              <span>作業者作成</span>
             </button>
             <NotificationController 
               checkedItems={checkedItems}
@@ -287,7 +288,7 @@ const WorkerListPage: React.FC = () => {
             
             <button
               onClick={handleExportCSV}
-              className="ml-auto flex items-center space-x-1 px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="ml-auto flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
               <Download size={16} />
               <span>CSV出力</span>
@@ -300,10 +301,10 @@ const WorkerListPage: React.FC = () => {
                 <div className="text-gray-500">読み込み中...</div>
               </div>
             ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-300">
+              <table className="min-w-full border-collapse border border-gray-300">
+                <thead className="bg-gray-100">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-700 w-10">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-10">
                       <input 
                         type="checkbox" 
                         className="rounded border-gray-300" 
@@ -314,25 +315,25 @@ const WorkerListPage: React.FC = () => {
                         onChange={handleHeaderCheckboxChange}
                       />
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       作業者名
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       着手中作業
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       予定作業
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       次回来社日
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       最終作業日時
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       スキル
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th scope="col" className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                       グループ
                     </th>
                   </tr>
@@ -344,7 +345,7 @@ const WorkerListPage: React.FC = () => {
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => navigate(`/admin/worker-detail/${worker.id}`)}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-center">
                         <input
                           type="checkbox"
                           checked={checkedItems.has(worker.id.toString())}
@@ -353,25 +354,25 @@ const WorkerListPage: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         #{worker.id} / {worker.name || '名前未設定'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.inProgressWork || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.plannedWork || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.nextVisitDate ? formatDate(worker.nextVisitDate) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.lastWorkDate ? formatDate(worker.lastWorkDate) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.skill || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="border border-gray-300 px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {worker.groupName || '-'}
                       </td>
                     </tr>

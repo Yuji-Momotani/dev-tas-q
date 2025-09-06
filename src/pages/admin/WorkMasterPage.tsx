@@ -196,8 +196,7 @@ const WorkMasterPage: React.FC = () => {
       
       <div className="bg-white rounded-md shadow-sm p-4 mb-6">
         {/* ヘッダー */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium">作業マスタ一覧</h2>
+        <div className="flex justify-left items-center mb-4">
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"

@@ -3,6 +3,7 @@ import NotificationModal from './NotificationModal';
 import NotificationConfirmationModal from './NotificationConfirmationModal';
 import { supabase } from '../utils/supabase';
 import { Worker } from '../types/worker';
+import { Mail } from 'lucide-react';
 
 interface NotificationControllerProps {
   checkedItems: Set<string>;
@@ -100,9 +101,10 @@ const NotificationController: React.FC<NotificationControllerProps> = ({
     <>
       <button
         onClick={handleNotification}
-        className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+        className="flex items-center space-x-1.5 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
       >
-        通達実施
+        <Mail size={16} />
+        <span>通達実施</span>
       </button>
 
       <NotificationModal

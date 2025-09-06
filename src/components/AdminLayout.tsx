@@ -62,18 +62,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
         {/* Navigation buttons */}
         <div className="mb-4 flex space-x-2">
           <button 
-            onClick={handleAccountManagement}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            アカウント管理
-          </button>
-          <button 
-            onClick={handleWorkVideoList}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            作業動画一覧
-          </button>
-          <button 
             onClick={handleWorkList}
             className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
@@ -84,6 +72,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
             className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
             作業者一覧
+          </button>
+          <button 
+            onClick={handleAccountManagement}
+            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+          >
+            アカウント管理
+          </button>
+          <button 
+            onClick={handleWorkVideoList}
+            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+          >
+            作業動画一覧
           </button>
           <button 
             onClick={handleWorkMaster}

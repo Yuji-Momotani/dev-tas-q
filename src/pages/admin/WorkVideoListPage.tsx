@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Video } from 'lucide-react';
+import { Trash2, Video, Plus } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { WorkVideo } from '../../types/work';
 import type { Database } from '../../types/database.types';
@@ -276,15 +276,16 @@ const WorkVideoListPage: React.FC = () => {
         <div className="bg-white rounded-md shadow-sm p-4">
           <button
             onClick={handleAddVideo}
-            className="mb-4 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+            className="mb-4 flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
-            動画追加
+            <Plus size={16} />
+            <span>動画追加</span>
           </button>
 
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse border border-gray-300">
               <thead>
-                <tr className="bg-gray-300">
+                <tr className="bg-gray-100">
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
                     動画
                   </th>
