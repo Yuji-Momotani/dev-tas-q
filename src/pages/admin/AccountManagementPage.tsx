@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
 import AccountAddModal from '../../components/AccountAddModal';
+import AdminLayout from '../../components/AdminLayout';
 
 type Admin = Database['public']['Tables']['admins']['Row'];
 type AdminRole = Database['public']['Tables']['admin_roles']['Row'];
@@ -16,8 +17,6 @@ const AccountManagementPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [admins, setAdmins] = useState<AdminWithRole[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(true);
-
-  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
   useEffect(() => {
     fetchAdmins();
@@ -56,10 +55,6 @@ const AccountManagementPage: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    navigate('/admin/login');
-  };
-
   const handleAddAccount = () => {
     setShowAddModal(true);
   };
@@ -68,57 +63,8 @@ const AccountManagementPage: React.FC = () => {
     setShowAddModal(false);
   };
 
-
-  const handleWorkVideoList = () => {
-    navigate('/admin/work-videos');
-  };
-
-  const handleWorkList = () => {
-    navigate('/admin/work-list');
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-1 w-8">
-            <img 
-              src={logoPath}
-              alt="ロゴ"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <h1 className="text-lg font-medium">アカウント管理</h1>
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleWorkList}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-          >
-            作業状況一覧
-          </button>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-          >
-            ログアウト
-          </button>
-        </div>
-      </header>
-      
-      <div className="p-4">
-        <div className="mb-4 flex space-x-2">
-          <button className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700">
-            アカウント管理
-          </button>
-          <button 
-            onClick={handleWorkVideoList}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            作業動画一覧
-          </button>
-        </div>
+    <AdminLayout title="アカウント管理">
 
         <div className="bg-white rounded-md shadow-sm p-4">
           <button
@@ -228,7 +174,6 @@ const AccountManagementPage: React.FC = () => {
             </table>
           </div>
         </div>
-      </div>
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
@@ -241,7 +186,7 @@ const AccountManagementPage: React.FC = () => {
         onSuccess={fetchAdmins}
         navigate={navigate}
       />
-    </div>
+    </AdminLayout>
   );
 };
 

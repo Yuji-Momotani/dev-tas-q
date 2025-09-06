@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
+import AdminLayout from '../../components/AdminLayout';
 import { Work } from '../../types/work';
 import { Download, Printer, Trash2, Check } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
@@ -36,8 +37,6 @@ const WorkListPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedWorker, setSelectedWorker] = useState('');
   const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
-
-  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
   // モーダル状態
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -185,13 +184,6 @@ const WorkListPage: React.FC = () => {
     }
   };
 
-  const handleAccountManagement = () => {
-    navigate('/admin/account-management');
-  };
-
-  const handleWorkVideos = () => {
-    navigate('/admin/work-videos');
-  };
 
   // 検索フィルターとソートを適用する関数
   const applyFilters = () => {
@@ -259,16 +251,6 @@ const WorkListPage: React.FC = () => {
     navigate(`/admin/work-detail/${id}`);
   };
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate('/admin/login');
-    } catch (err) {
-      console.error('ログアウトエラー:', err);
-      // エラーが発生してもログイン画面に遷移
-      navigate('/admin/login');
-    }
-  };
 
   const handleOpenAddModal = () => {
     setIsAddModalOpen(true);
@@ -435,57 +417,13 @@ const WorkListPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-1 w-8">
-            <img 
-              src={logoPath}
-              alt="ロゴ"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <h1 className="text-lg font-medium">作業状況一覧</h1>
+    <AdminLayout title="作業状況一覧">
+      {/* エラー表示 */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
         </div>
-        <div className="flex space-x-2">
-          <button className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-            onClick={() => navigate('/admin/worker-list')}
-          >
-            作業者一覧
-          </button>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-          >
-            ログアウト
-          </button>
-        </div>
-      </header>
-      
-      <div className="p-4">
-        {/* エラー表示 */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* Navigation buttons */}
-        <div className="mb-4 flex space-x-2">
-          <button 
-            onClick={handleAccountManagement}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            アカウント管理
-          </button>
-          <button
-            onClick={handleWorkVideos}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            作業動画一覧
-          </button>
-        </div>
+      )}
         
         <div className="bg-white rounded-md shadow-sm p-4 mb-6">
           {/* Filter controls */}
@@ -688,7 +626,6 @@ const WorkListPage: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
 
       {/* 作業追加モーダル */}
       <WorkAddModal
@@ -700,7 +637,7 @@ const WorkListPage: React.FC = () => {
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
       </footer>
-    </div>
+    </AdminLayout>
   );
 };
 

@@ -5,6 +5,7 @@ import type { Database } from '../../types/database.types';
 import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
 import { Edit, Save, X, Video } from 'lucide-react';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
+import AdminLayout from '../../components/AdminLayout';
 import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '../../utils/video';
 import { WorkVideo } from '../../types/work';
 import { handleSupabaseError } from '../../utils/auth';
@@ -40,8 +41,6 @@ const WorkDetailPage: React.FC = () => {
   const [videoThumbnails, setVideoThumbnails] = useState<Record<number, string>>({});
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
-
-  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
   useEffect(() => {
     if (id) {
@@ -219,20 +218,8 @@ const WorkDetailPage: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    navigate('/admin/login');
-  };
-
   const handleWorkList = () => {
     navigate('/admin/work-list');
-  };
-
-  const handleAccountManagement = () => {
-    navigate('/admin/account-management');
-  };
-
-  const handleWorkVideos = () => {
-    navigate('/admin/work-videos');
   };
 
   const handlePlayVideo = (video: WorkVideo) => {
@@ -362,69 +349,17 @@ const WorkDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="bg-white rounded-md p-1 w-8">
-              <img 
-                src={logoPath}
-                alt="ロゴ"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h1 className="text-lg font-medium">作業詳細</h1>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={handleWorkList}
-              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-            >
-              作業状況一覧
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-            >
-              ログアウト
-            </button>
-          </div>
-        </header>
+      <AdminLayout title="作業詳細">
         <div className="p-8 text-center">
           <p>読み込み中...</p>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   if (error || !workItem || !editedItem) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="bg-white rounded-md p-1 w-8">
-              <img 
-                src={logoPath}
-                alt="ロゴ"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h1 className="text-lg font-medium">作業詳細</h1>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={handleWorkList}
-              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-            >
-              作業状況一覧
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-            >
-              ログアウト
-            </button>
-          </div>
-        </header>
+      <AdminLayout title="作業詳細">
         <div className="p-8 text-center">
           <p>{error || '作業が見つかりませんでした。'}</p>
           <button
@@ -434,55 +369,12 @@ const WorkDetailPage: React.FC = () => {
             一覧に戻る
           </button>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-green-600 text-white py-3 px-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="bg-white rounded-md p-1 w-8">
-            <img 
-              src={logoPath}
-              alt="ロゴ"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <h1 className="text-lg font-medium">作業詳細</h1>
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleWorkList}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-          >
-            作業状況一覧
-          </button>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-1 border border-white rounded text-sm hover:bg-green-700"
-          >
-            ログアウト
-          </button>
-        </div>
-      </header>
-      
-      <div className="p-4">
-        <div className="mb-4 flex space-x-2">
-          <button
-            onClick={handleAccountManagement}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            アカウント管理
-          </button>
-          <button
-            onClick={handleWorkVideos}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            作業動画一覧
-          </button>
-        </div>
+    <AdminLayout title="作業詳細">
         
         <div className="bg-white rounded-md shadow-sm p-6">
           <div className="mb-6 flex space-x-2">
@@ -791,7 +683,6 @@ const WorkDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
       
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
@@ -803,7 +694,7 @@ const WorkDetailPage: React.FC = () => {
         onClose={handleCloseVideoModal}
         video={selectedVideo}
       />
-    </div>
+    </AdminLayout>
   );
 };
 
