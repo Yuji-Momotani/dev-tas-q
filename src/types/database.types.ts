@@ -180,6 +180,30 @@ export type Database = {
         }
         Relationships: []
       }
+      m_work: {
+        Row: {
+          created_at: string
+          id: number
+          title: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          title: string
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          title?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       send_mails: {
         Row: {
           body: string
@@ -366,11 +390,10 @@ export type Database = {
           deleted_at: string | null
           delivery_date: string | null
           id: number
+          m_work_id: number
           quantity: number | null
           status: number | null
-          unit_price: number | null
           updated_at: string | null
-          work_title: string | null
           work_videos_id: number | null
           worker_id: number | null
         }
@@ -379,11 +402,10 @@ export type Database = {
           deleted_at?: string | null
           delivery_date?: string | null
           id?: number
+          m_work_id: number
           quantity?: number | null
           status?: number | null
-          unit_price?: number | null
           updated_at?: string | null
-          work_title?: string | null
           work_videos_id?: number | null
           worker_id?: number | null
         }
@@ -392,15 +414,21 @@ export type Database = {
           deleted_at?: string | null
           delivery_date?: string | null
           id?: number
+          m_work_id?: number
           quantity?: number | null
           status?: number | null
-          unit_price?: number | null
           updated_at?: string | null
-          work_title?: string | null
           work_videos_id?: number | null
           worker_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "works_m_work_id_fkey"
+            columns: ["m_work_id"]
+            isOneToOne: false
+            referencedRelation: "m_work"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "works_user_id_fkey"
             columns: ["worker_id"]

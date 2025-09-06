@@ -114,9 +114,12 @@ const WorkerListPage: React.FC = () => {
           group_id,
           works!left (
             id,
-            work_title,
             status,
-            updated_at
+            updated_at,
+            m_work (
+              title,
+              unit_price
+            )
           ),
           worker_skills!left (
             rank_id,
@@ -139,10 +142,10 @@ const WorkerListPage: React.FC = () => {
       // データを変換
       const workerList: Worker[] = (data || []).map(worker => {
         const works = worker.works || [];
-        const inProgressWork = works.find(w => w.status === WorkStatus.IN_PROGRESS)?.work_title || null;
+        const inProgressWork = works.find(w => w.status === WorkStatus.IN_PROGRESS)?.m_work?.title || null;
         
         // 予定作業は複数ある可能性があるので、スラッシュ区切りで結合
-        const plannedWorks = works.filter(w => w.status === WorkStatus.REQUEST_PLANNED).map(w => w.work_title).filter(Boolean);
+        const plannedWorks = works.filter(w => w.status === WorkStatus.REQUEST_PLANNED).map(w => w.m_work?.title).filter(Boolean);
         const plannedWork = plannedWorks.length > 0 ? plannedWorks.join(' / ') : null;
         
         // 最新の作業日時を取得（完了した作業から）

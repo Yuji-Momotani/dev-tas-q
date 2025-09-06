@@ -7,6 +7,7 @@ import WorkVideoListPage from './pages/admin/WorkVideoListPage';
 import WorkerListPage from './pages/admin/WorkerListPage';
 import AccountDetailPage from './pages/admin/AccountDetailPage';
 import WorkerDetailPage from './pages/admin/WorkerDetailPage';
+import WorkMasterPage from './pages/admin/WorkMasterPage';
 import AdminAuthCallbackPage from './pages/admin/AdminAuthCallbackPage';
 import AdminPasswordResetPage from './pages/admin/AdminPasswordResetPage';
 import EmailChangePage from './pages/admin/EmailChangePage';
@@ -28,6 +29,7 @@ function App() {
         <Route path="/admin/work-detail/:id" element={<WorkDetailPage />} />
         <Route path="/admin/account-management" element={<AccountManagementPage />} />
         <Route path="/admin/work-videos" element={<WorkVideoListPage />} />
+        <Route path="/admin/work-master" element={<WorkMasterPage />} />
         <Route path="/admin/account-detail/:id" element={<AccountDetailPage />} />
         <Route path="/admin/worker-detail/:id" element={<WorkerDetailPage />} />
         <Route path="/admin/worker-list" element={<WorkerListPage />} />

@@ -16,11 +16,15 @@ import { sortWorkItems } from '../../utils/workSort';
 import { handleSupabaseError } from '../../utils/auth';
 
 // Supabaseのworks型を拡張してWork型に対応
-type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
+type WorkWithWorkerAndMaster = Database['public']['Tables']['works']['Row'] & {
   workers?: {
     id: number;
     name: string | null;
     unit_price_ratio: number | null;
+  } | null;
+  m_work?: {
+    title: string;
+    unit_price: number;
   } | null;
 };
 
@@ -73,6 +77,10 @@ const WorkListPage: React.FC = () => {
             id,
             name,
             unit_price_ratio
+          ),
+          m_work (
+            title,
+            unit_price
           )
         `)
         .is('deleted_at', null);
@@ -82,14 +90,14 @@ const WorkListPage: React.FC = () => {
       }
 
       // Supabaseのデータ構造をWork型に変換
-      const convertedItems: Work[] = (data as WorkWithWorker[]).map((work) => ({
+      const convertedItems: Work[] = (data as WorkWithWorkerAndMaster[]).map((work) => ({
         id: work.id,
-        title: work.work_title || '未設定',
+        title: work.m_work?.title || '作業名未設定',
         status: work.status || WorkStatus.REQUEST_PLANNED,
         workerName: work.workers?.name || undefined,
         workerID: work.workers?.id || undefined,
         quantity: work.quantity || undefined,
-        unitPrice: work.unit_price || 0,
+        unitPrice: work.m_work?.unit_price || 0,
         deliveryDate: work.delivery_date ? new Date(work.delivery_date) : undefined,
         workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
       }));

@@ -64,6 +64,10 @@ const WorkerWorkPage: React.FC = () => {
               id,
               video_title,
               video_url
+            ),
+            m_work (
+              title,
+              unit_price
             )
           `)
           .eq('worker_id', workerData.id)
@@ -319,7 +323,7 @@ const WorkerWorkPage: React.FC = () => {
                     </h3>
                     <div className="flex items-center space-x-4 mb-6">
                       <h4 className="text-2xl font-semibold text-gray-700">
-                        {work.work_title || '作業タイトル'}
+                        {work.m_work?.title || '作業タイトル'}
                       </h4>
                     </div>
                     <div className="flex items-center space-x-4 mb-6">
@@ -342,10 +346,10 @@ const WorkerWorkPage: React.FC = () => {
                         <span className="text-gray-800">{new Date(work.delivery_date).toLocaleDateString('ja-JP')}</span>
                       </div>
                     )}
-                    {work.unit_price && (
+                    {work.m_work?.unit_price && (
                       <div>
                         <span className="text-gray-600 font-medium">単価: </span>
-                        <span className="text-gray-800">¥{work.unit_price.toLocaleString()}</span>
+                        <span className="text-gray-800">¥{work.m_work.unit_price.toLocaleString()}</span>
                       </div>
                     )}
                     </div>
