@@ -30,6 +30,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
     navigate('/admin/worker-list');
   };
 
+  const handleWorkMaster = () => {
+    navigate('/admin/work-master');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -80,6 +84,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
             className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
             作業者一覧
+          </button>
+          <button 
+            onClick={handleWorkMaster}
+            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+          >
+            作業マスタ管理
           </button>
         </div>
 

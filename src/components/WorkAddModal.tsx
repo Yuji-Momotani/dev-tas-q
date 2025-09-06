@@ -7,6 +7,7 @@ import { WorkStatus } from '../constants/workStatus';
 import { handleSupabaseError } from '../utils/auth';
 
 type Worker = Database['public']['Tables']['workers']['Row'];
+type MWork = Database['public']['Tables']['m_work']['Row'];
 
 interface WorkAddModalProps {
   isOpen: boolean;
@@ -17,25 +18,26 @@ interface WorkAddModalProps {
 const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
+    workMasterId: null as number | null,
     status: WorkStatus.REQUEST_PLANNED, // デフォルトを依頼予定に設定
     assignee: '',
     assigneeId: null as number | null,
     quantity: 0,
-    unitPrice: 0,
     totalCost: 0,
     deliveryDate: ''
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [workMasters, setWorkMasters] = useState<MWork[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 作業者一覧を取得
+  // 作業者一覧と作業マスタを取得
   useEffect(() => {
     if (isOpen) {
       fetchWorkers();
+      fetchWorkMasters();
     }
   }, [isOpen]);
 
@@ -57,6 +59,20 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     }
   };
 
+  const fetchWorkMasters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('m_work')
+        .select('id, title, unit_price')
+        .order('title');
+
+      if (error) throw error;
+      setWorkMasters(data || []);
+    } catch (err) {
+      console.error('作業マスタ一覧取得エラー:', err);
+    }
+  };
+
 
   const handleInputChange = (field: string, value: string | number) => {
     const updatedData = {
@@ -70,17 +86,27 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       updatedData.assigneeId = selectedWorker ? selectedWorker.id : null;
     }
 
-    // 数量または単価が変更された場合、費用を自動計算
-    if (field === 'quantity' || field === 'unitPrice' || field === 'assignee') {
+    // 作業マスタ選択時に、IDを設定
+    if (field === 'workMasterId') {
+      updatedData.workMasterId = Number(value) || null;
+    }
+
+    // 数量、作業マスタ、または作業者が変更された場合、費用を自動計算
+    if (field === 'quantity' || field === 'workMasterId' || field === 'assignee') {
       const quantity = field === 'quantity' ? Number(value) : formData.quantity;
-      const unitPrice = field === 'unitPrice' ? Number(value) : formData.unitPrice;
+      const workMasterId = field === 'workMasterId' ? Number(value) : formData.workMasterId;
+      
       let selectedWorker = null;
       if (field === 'assignee') {
         selectedWorker = workers.find(worker => worker.name === value);
       } else {
         selectedWorker = workers.find(worker => worker.name === formData.assignee);
       }
+      
+      const selectedWorkMaster = workMasters.find(work => work.id === workMasterId);
+      const unitPrice = selectedWorkMaster?.unit_price || 0;
       const unitPriceRatio = selectedWorker?.unit_price_ratio || 1.0;
+      
       // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
       updatedData.totalCost = Math.floor(quantity * unitPrice * unitPriceRatio);
     }
@@ -97,8 +123,8 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
   const validateForm = async (): Promise<boolean> => {
     const newErrors: { [key: string]: string } = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = '作業名は必須です';
+    if (!formData.workMasterId) {
+      newErrors.workMasterId = '作業種別は必須です';
     }
 
     if (!formData.status) {
@@ -118,11 +144,10 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       setSaving(true);
       
       const workData = {
-        work_title: formData.name,
+        m_work_id: formData.workMasterId,
         status: formData.status,
         worker_id: formData.assigneeId,
         quantity: formData.quantity || null,
-        unit_price: formData.unitPrice || null,
         delivery_date: formData.deliveryDate || null,
       };
 
@@ -147,12 +172,11 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
 
   const handleClose = () => {
     setFormData({
-      name: '',
+      workMasterId: null,
       status: WorkStatus.REQUEST_PLANNED,
       assignee: '',
       assigneeId: null,
       quantity: 0,
-      unitPrice: 0,
       totalCost: 0,
       deliveryDate: ''
     });
@@ -178,21 +202,26 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
 
         {/* Form */}
         <div className="p-6 space-y-6">
-          {/* 作業名 (必須) */}
+          {/* 作業種別 (必須) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              作業名 <span className="text-red-500">*</span>
+              作業種別 <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+            <select
+              value={formData.workMasterId || ''}
+              onChange={(e) => handleInputChange('workMasterId', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
+                errors.workMasterId ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="作業名を入力してください"
-            />
-            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+            >
+              <option value="">作業種別を選択してください</option>
+              {workMasters.map((work) => (
+                <option key={work.id} value={work.id}>
+                  {work.title} / ¥{work.unit_price.toLocaleString()}
+                </option>
+              ))}
+            </select>
+            {errors.workMasterId && <p className="mt-1 text-sm text-red-600">{errors.workMasterId}</p>}
           </div>
 
 
@@ -239,7 +268,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* 数量 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -249,21 +278,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
                 type="number"
                 value={formData.quantity}
                 onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                min="0"
-                placeholder="0"
-              />
-            </div>
-
-            {/* 単価 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                単価
-              </label>
-              <input
-                type="number"
-                value={formData.unitPrice}
-                onChange={(e) => handleInputChange('unitPrice', parseInt(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 min="0"
                 placeholder="0"

@@ -121,7 +121,14 @@ const WorkerMyPage: React.FC = () => {
         // 作業履歴を取得
         const { data: workHistory, error: workError } = await supabase
           .from('works')
-          .select('id, work_title, status, delivery_date')
+          .select(`
+            id, 
+            status, 
+            delivery_date,
+            m_work (
+              title
+            )
+          `)
           .eq('worker_id', workerData.id)
           .is('deleted_at', null)
           .limit(10);
@@ -143,7 +150,7 @@ const WorkerMyPage: React.FC = () => {
         // workSort.tsで使用する形式に変換してソート
         const workItemsForSort = (workHistory || []).map(work => ({
           id: work.id,
-          workTitle: work.work_title || '',
+          workTitle: work.m_work?.title || '',
           status: work.status as WorkStatus,
           deliveryDate: work.delivery_date ? new Date(work.delivery_date) : null,
           // その他の必須フィールドはダミーデータを設定

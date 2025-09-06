@@ -26,8 +26,12 @@ type WorkerWithRelations = Database['public']['Tables']['workers']['Row'] & {
   }>;
   works?: Array<{
     id: number;
-    work_title: string | null;
     status: number | null;
+    quantity: number | null;
+    m_work?: {
+      title: string;
+      unit_price: number;
+    } | null;
   }>;
 };
 
@@ -115,8 +119,12 @@ const WorkerDetailPage: React.FC = () => {
           ),
           works (
             id,
-            work_title,
-            status
+            status,
+            quantity,
+            m_work (
+              title,
+              unit_price
+            )
           )
         `)
         .eq('id', workerId)
@@ -168,10 +176,12 @@ const WorkerDetailPage: React.FC = () => {
           // 作業履歴をWork型の配列に変換
           const works = (worker.works || []).map(work => ({
             id: work.id,
-            title: work.work_title || '',
+            // m_workテーブルから作業名を取得
+            title: work.m_work?.title || '作業名未設定',
             status: (work.status || WorkStatus.REQUEST_PLANNED) as WorkStatus,
-            quantity: 0,
-            unitPrice: 0
+            quantity: work.quantity || 0,
+            // m_workテーブルから単価を取得
+            unitPrice: work.m_work?.unit_price || 0
           }));
           
           // ソート処理を適用

@@ -33,7 +33,6 @@ const WorkDetailPage: React.FC = () => {
     work_title: string;
     worker_id: number | null;
     quantity: number | null;
-    unit_price: number | null;
     delivery_date: string | null;
   } | null>(null);
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
@@ -63,6 +62,10 @@ const WorkDetailPage: React.FC = () => {
             id,
             name,
             unit_price_ratio
+          ),
+          m_work (
+            title,
+            unit_price
           )
         `)
         .eq('id', Number(id))
@@ -85,10 +88,9 @@ const WorkDetailPage: React.FC = () => {
 
       setWork(data as WorkWithWorker);
       setEditedItem({
-        work_title: data.work_title || '',
+        work_title: data.m_work?.title || '',
         worker_id: data.worker_id,
         quantity: data.quantity,
-        unit_price: data.unit_price,
         delivery_date: data.delivery_date
       });
       
@@ -244,10 +246,9 @@ const WorkDetailPage: React.FC = () => {
     setIsEditing(false);
     if (workItem) {
       setEditedItem({
-        work_title: workItem.work_title || '',
+        work_title: workItem.m_work?.title || '',
         worker_id: workItem.worker_id,
         quantity: workItem.quantity,
-        unit_price: workItem.unit_price,
         delivery_date: workItem.delivery_date
       });
     }
@@ -260,13 +261,13 @@ const WorkDetailPage: React.FC = () => {
       setLoading(true);
 
       const updateData = {
-        work_title: editedItem.work_title,
         worker_id: editedItem.worker_id,
         quantity: editedItem.quantity,
-        unit_price: editedItem.unit_price,
         delivery_date: editedItem.delivery_date,
         updated_at: new Date().toISOString()
       };
+      
+      // Note: work_title and unit_price are now in m_work table and should be updated there
 
       const { error } = await supabase
         .from('works')
@@ -312,9 +313,9 @@ const WorkDetailPage: React.FC = () => {
 
   // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
   const calculateTotalCost = (): number => {
-    if (!editedItem?.quantity || !editedItem?.unit_price) return 0;
+    if (!editedItem?.quantity || !workItem?.m_work?.unit_price) return 0;
     const unitPriceRatio = workItem?.workers?.unit_price_ratio || 1.0;
-    return Math.floor(editedItem.quantity * editedItem.unit_price * unitPriceRatio);
+    return Math.floor(editedItem.quantity * workItem.m_work.unit_price * unitPriceRatio);
   };
 
   // 動画選択変更処理
@@ -427,15 +428,11 @@ const WorkDetailPage: React.FC = () => {
               <div className="border-b border-gray-200 pb-4 flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">作業名</label>
                 <div className="ml-8 flex-1">
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedItem.work_title}
-                      onChange={(e) => handleInputChange('work_title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                    />
-                  ) : (
-                    <div className="text-lg text-gray-900">{workItem.work_title || '未設定'}</div>
+                  <div className="text-lg text-gray-900">{workItem.m_work?.title || '未設定'}</div>
+                  {isEditing && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      ※ 作業名は作業マスタで管理されます
+                    </div>
                   )}
                 </div>
               </div>
@@ -495,17 +492,12 @@ const WorkDetailPage: React.FC = () => {
               <div className="border-b border-gray-200 pb-4 flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">単価</label>
                 <div className="ml-8 flex-1">
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      value={editedItem.unit_price || ''}
-                      onChange={(e) => handleInputChange('unit_price', parseInt(e.target.value) || null)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                      min="0"
-                    />
-                  ) : (
-                    <div className="text-lg text-gray-900">
-                      ¥{(workItem.unit_price || 0).toLocaleString()}
+                  <div className="text-lg text-gray-900">
+                    ¥{(workItem.m_work?.unit_price || 0).toLocaleString()}
+                  </div>
+                  {isEditing && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      ※ 単価は作業マスタで管理されます
                     </div>
                   )}
                 </div>
