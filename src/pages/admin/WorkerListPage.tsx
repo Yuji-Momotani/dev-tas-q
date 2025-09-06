@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import NotificationModal from '../../components/NotificationModal';
-import NotificationConfirmationModal from '../../components/NotificationConfirmationModal';
+import NotificationController from '../../components/NotificationController';
 import WorkerCreateModal from '../../components/WorkerCreateModal';
 import AdminLayout from '../../components/AdminLayout';
 import { Download} from 'lucide-react';
@@ -25,14 +24,6 @@ const WorkerListPage: React.FC = () => {
     selectedSkill: '',
     selectedGroup: ''
   });
-  // 通達実施モーダル関連の状態
-  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [notificationData, setNotificationData] = useState<{
-    recipients: string[];
-    title: string;
-    content: string;
-  } | null>(null);
   
   // 作業者作成モーダル関連の状態
   const [showWorkerModal, setShowWorkerModal] = useState(false);
@@ -249,72 +240,8 @@ const WorkerListPage: React.FC = () => {
     }
   }, [workers]);
   
-  const handleNotification = () => {
-    if (checkedItems.size === 0) {
-      alert('通達を送信する作業者を選択してください。');
-      return;
-    }
-    setIsNotificationModalOpen(true);
-  };
-
-  const handleCloseNotificationModal = () => {
-    setIsNotificationModalOpen(false);
-    setNotificationData(null);
-  };
-
-  const handleConfirmNotification = (data: { recipients: string[]; title: string; content: string }) => {
-    setNotificationData(data);
-    setIsNotificationModalOpen(false);
-    setIsConfirmationModalOpen(true);
-  };
-
-  const handleCloseConfirmationModal = () => {
-    setIsConfirmationModalOpen(false);
-    setNotificationData(null);
-    setIsNotificationModalOpen(true);
-  };
-
-  const handleFinalSend = async () => {
-    if (!notificationData) return;
-
-    try {
-      // 選択された作業者の詳細情報を取得
-      const selectedWorkerDetails = workers.filter(worker => 
-        checkedItems.has(worker.id.toString())
-      );
-
-      // send_mailテーブルに各作業者分のレコードを挿入
-      const mailRecords = selectedWorkerDetails.map(worker => ({
-        worker_id: worker.id,
-        from: import.meta.env.VITE_MAIL_FROM_ADDRESS,
-        // TODO:現状ドメイン設定をしていないため、自身のメールアドレスしか送信できない
-        // to: worker.email,
-        to: 'kilroy.was.here1016@gmail.com',
-        subject: notificationData.title,
-        body: notificationData.content
-      }));
-
-      const { error } = await supabase
-        .from('send_mails')
-        .insert(mailRecords);
-
-      if (error) {
-        console.error('メール送信レコード挿入エラー:', error);
-        alert('メール送信の準備中にエラーが発生しました。');
-        return;
-      }
-
-      alert(`${notificationData.recipients.length}名の作業者にメールを送信しました。`);
-      
-      // 送信後、チェックボックスをクリア
-      setCheckedItems(new Set());
-      setIsConfirmationModalOpen(false);
-      setNotificationData(null);
-      
-    } catch (err) {
-      console.error('メール送信処理エラー:', err);
-      alert('メール送信中にエラーが発生しました。');
-    }
+  const handleClearCheckedItems = () => {
+    setCheckedItems(new Set());
   };
 
   const handleRemoveWorker = (workerId: string) => {
@@ -323,13 +250,6 @@ const WorkerListPage: React.FC = () => {
     setCheckedItems(newCheckedItems);
   };
 
-  // チェックされた作業者の情報を取得
-  const getSelectedWorkers = () => {
-    return workers.filter(worker => checkedItems.has(worker.id.toString())).map(worker => ({
-      id: worker.id.toString(),
-      name: worker.name || '名前未設定'
-    }));
-  };
 
   const handleExportCSV = () => {
     // TODO: Supabaseデータに対応したCSV出力を実装
@@ -353,12 +273,12 @@ const WorkerListPage: React.FC = () => {
             >
               作業者作成
             </button>
-            <button
-              onClick={handleNotification}
-              className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-            >
-              通達実施
-            </button>
+            <NotificationController 
+              checkedItems={checkedItems}
+              workers={workers}
+              onClearCheckedItems={handleClearCheckedItems}
+              onRemoveWorker={handleRemoveWorker}
+            />
             
             <SearchBar onSearch={handleSearch} />
             
@@ -459,24 +379,6 @@ const WorkerListPage: React.FC = () => {
           </div>
         </div>
       
-      {/* 通達実施モーダル */}
-      <NotificationModal
-        isOpen={isNotificationModalOpen}
-        onClose={handleCloseNotificationModal}
-        selectedWorkers={getSelectedWorkers()}
-        onConfirm={handleConfirmNotification}
-        onRemoveWorker={handleRemoveWorker}
-      />
-      
-      {/* 通達実施内容確認モーダル */}
-      <NotificationConfirmationModal
-        isOpen={isConfirmationModalOpen}
-        onClose={handleCloseConfirmationModal}
-        onConfirm={handleFinalSend}
-        selectedWorkers={getSelectedWorkers()}
-        title={notificationData?.title || ''}
-        content={notificationData?.content || ''}
-      />
 
       {/* 作業者作成モーダル */}
       <WorkerCreateModal
