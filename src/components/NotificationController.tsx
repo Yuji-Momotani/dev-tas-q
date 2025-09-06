@@ -61,8 +61,8 @@ const NotificationController: React.FC<NotificationControllerProps> = ({
       const mailRecords = selectedWorkerDetails.map(worker => ({
         worker_id: worker.id,
         from: import.meta.env.VITE_MAIL_FROM_ADDRESS,
-        // to: worker.email, TODO: ドメイン設定後に変更
-				to: 'kilroy.was.here1016@gmail.com',
+        to: worker.email,
+				// to: 'kilroy.was.here1016@gmail.com',
         subject: notificationData.title,
         body: notificationData.content
       }));
