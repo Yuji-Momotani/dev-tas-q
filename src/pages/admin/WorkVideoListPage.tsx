@@ -285,7 +285,7 @@ const WorkVideoListPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse border border-gray-300">
               <thead>
-                <tr className="bg-gray-300">
+                <tr className="bg-gray-100">
                   <th className="border border-gray-300 px-6 py-3 text-left text-sm font-medium text-gray-700">
                     動画
                   </th>
