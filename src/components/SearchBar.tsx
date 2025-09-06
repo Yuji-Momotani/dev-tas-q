@@ -75,7 +75,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
     <>
       <button
         onClick={handleSubmit}
-        className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center"
+        className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center"
       >
         <Search size={16} className="mr-1" />
         検索
@@ -86,7 +86,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           placeholder="フリーワード"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
       <div className="flex items-center space-x-2">
@@ -95,14 +95,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         <span>-</span>
         <input
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
 
@@ -111,7 +111,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
         <select
           value={selectedSkill}
           onChange={(e) => setSelectedSkill(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">全て</option>
           {skillOptions.map((rank) => (
@@ -127,7 +127,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
         <select
           value={selectedGroup}
           onChange={(e) => setSelectedGroup(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">全て</option>
           {groupOptions.map((group) => (

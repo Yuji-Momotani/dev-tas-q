@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import NotificationController from '../../components/NotificationController';
 import WorkerCreateModal from '../../components/WorkerCreateModal';
 import AdminLayout from '../../components/AdminLayout';
-import { Download} from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import SearchBar from '../../components/SearchBar';
 import { supabase } from '../../utils/supabase';
 import { WorkStatus } from '../../constants/workStatus';
@@ -272,9 +272,10 @@ const WorkerListPage: React.FC = () => {
           <div className="flex flex-wrap gap-4 items-end mb-4">
             <button
               onClick={handleAddWorker}
-              className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
-              作業者作成
+              <Plus size={16} />
+              <span>作業者作成</span>
             </button>
             <NotificationController 
               checkedItems={checkedItems}
@@ -287,7 +288,7 @@ const WorkerListPage: React.FC = () => {
             
             <button
               onClick={handleExportCSV}
-              className="ml-auto flex items-center space-x-1 px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="ml-auto flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
               <Download size={16} />
               <span>CSV出力</span>

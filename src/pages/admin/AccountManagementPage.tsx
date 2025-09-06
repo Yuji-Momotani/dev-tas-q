@@ -4,6 +4,7 @@ import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
 import AccountAddModal from '../../components/AccountAddModal';
 import AdminLayout from '../../components/AdminLayout';
+import { Plus } from 'lucide-react';
 
 type Admin = Database['public']['Tables']['admins']['Row'];
 type AdminRole = Database['public']['Tables']['admin_roles']['Row'];
@@ -69,9 +70,10 @@ const AccountManagementPage: React.FC = () => {
         <div className="bg-white rounded-md shadow-sm p-4">
           <button
             onClick={handleAddAccount}
-            className="mb-4 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+            className="mb-4 flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
-            アカウント追加
+            <Plus size={16} />
+            <span>アカウント追加</span>
           </button>
 
           <div className="overflow-x-auto">
