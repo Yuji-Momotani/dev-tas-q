@@ -89,7 +89,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
             onClick={handleWorkMaster}
             className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
-            作業マスタ管理
+            料金マスタ管理
           </button>
         </div>
 

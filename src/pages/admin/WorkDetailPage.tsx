@@ -431,7 +431,7 @@ const WorkDetailPage: React.FC = () => {
                   <div className="text-lg text-gray-900">{workItem.m_work?.title || '未設定'}</div>
                   {isEditing && (
                     <div className="text-xs text-gray-500 mt-1">
-                      ※ 作業名は作業マスタで管理されます
+                      ※ 作業名は料金マスタで管理されます
                     </div>
                   )}
                 </div>
@@ -497,7 +497,7 @@ const WorkDetailPage: React.FC = () => {
                   </div>
                   {isEditing && (
                     <div className="text-xs text-gray-500 mt-1">
-                      ※ 単価は作業マスタで管理されます
+                      ※ 単価は料金マスタで管理されます
                     </div>
                   )}
                 </div>

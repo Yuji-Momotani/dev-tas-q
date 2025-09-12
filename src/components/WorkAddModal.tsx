@@ -33,7 +33,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 作業者一覧と作業マスタを取得
+  // 作業者一覧と料金マスタを取得
   useEffect(() => {
     if (isOpen) {
       fetchWorkers();
@@ -69,7 +69,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       if (error) throw error;
       setWorkMasters(data || []);
     } catch (err) {
-      console.error('作業マスタ一覧取得エラー:', err);
+      console.error('料金マスタ一覧取得エラー:', err);
     }
   };
 
@@ -86,12 +86,12 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       updatedData.assigneeId = selectedWorker ? selectedWorker.id : null;
     }
 
-    // 作業マスタ選択時に、IDを設定
+    // 料金マスタ選択時に、IDを設定
     if (field === 'workMasterId') {
       updatedData.workMasterId = Number(value) || null;
     }
 
-    // 数量、作業マスタ、または作業者が変更された場合、費用を自動計算
+    // 数量、料金マスタ、または作業者が変更された場合、費用を自動計算
     if (field === 'quantity' || field === 'workMasterId' || field === 'assignee') {
       const quantity = field === 'quantity' ? Number(value) : formData.quantity;
       const workMasterId = field === 'workMasterId' ? Number(value) : formData.workMasterId;
