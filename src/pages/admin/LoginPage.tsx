@@ -98,7 +98,7 @@ const LoginPage: React.FC = () => {
       </header>
       
       <div className="max-w-md mx-auto bg-white p-8 mt-8 rounded-md shadow-sm">
-        <h2 className="text-xl font-medium text-center mb-6">サービス名 ログイン</h2>
+        <h2 className="text-xl font-medium text-center mb-6">タスQ管理者 ログイン</h2>
         
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
