@@ -56,7 +56,7 @@ const WorkMasterPage: React.FC = () => {
       setWorkMasters(data || []);
     } catch (err) {
       console.error('データ取得エラー:', err);
-      setError('作業マスタデータの取得に失敗しました');
+      setError('料金マスタデータの取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -125,7 +125,7 @@ const WorkMasterPage: React.FC = () => {
           return;
         }
         
-        alert('作業マスタを更新しました');
+        alert('料金マスタを更新しました');
       } else {
         // 新規作成
         const { error } = await supabase
@@ -140,7 +140,7 @@ const WorkMasterPage: React.FC = () => {
           return;
         }
         
-        alert('作業マスタを追加しました');
+        alert('料金マスタを追加しました');
       }
       
       handleCloseModal();
@@ -154,7 +154,7 @@ const WorkMasterPage: React.FC = () => {
   };
 
   const handleDelete = async (work: MWork) => {
-    if (!confirm(`作業マスタ「${work.title}」を削除しますか？\n※この作業マスタを使用している作業がある場合は削除できません。`)) {
+    if (!confirm(`料金マスタ「${work.title}」を削除しますか？\n※この料金マスタを使用している作業がある場合は削除できません。`)) {
       return;
     }
 
@@ -168,14 +168,14 @@ const WorkMasterPage: React.FC = () => {
         
       if (error) {
         if (error.code === '23503') {
-          alert('この作業マスタを使用している作業があるため削除できません');
+          alert('この料金マスタを使用している作業があるため削除できません');
         } else {
           handleSupabaseError(error, navigate, 'admin');
         }
         return;
       }
       
-      alert('作業マスタを削除しました');
+      alert('料金マスタを削除しました');
       fetchWorkMasters();
     } catch (err) {
       console.error('削除エラー:', err);
@@ -186,7 +186,7 @@ const WorkMasterPage: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="作業マスタ管理">
+    <AdminLayout title="料金マスタ管理">
       {/* エラー表示 */}
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -203,7 +203,7 @@ const WorkMasterPage: React.FC = () => {
             disabled={loading}
           >
             <Plus size={16} />
-            <span>作業マスタ追加</span>
+            <span>料金マスタ追加</span>
           </button>
         </div>
         
@@ -238,7 +238,7 @@ const WorkMasterPage: React.FC = () => {
                 {workMasters.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                      作業マスタが登録されていません
+                      料金マスタが登録されていません
                     </td>
                   </tr>
                 ) : (
@@ -294,7 +294,7 @@ const WorkMasterPage: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-medium mb-4">
-              {editingWork ? '作業マスタ編集' : '作業マスタ追加'}
+              {editingWork ? '料金マスタ編集' : '料金マスタ追加'}
             </h3>
             
             <form onSubmit={handleSubmit}>
