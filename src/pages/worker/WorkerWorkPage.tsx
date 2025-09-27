@@ -352,6 +352,14 @@ const WorkerWorkPage: React.FC = () => {
                         <span className="text-gray-800">¥{work.m_work.unit_price.toLocaleString()}</span>
                       </div>
                     )}
+                    {work.note && (
+                      <div>
+                        <span className="text-gray-600 font-medium">特記事項: </span>
+                        <div className="text-gray-800 whitespace-pre-wrap leading-relaxed bg-gray-50 p-3 rounded border mt-1">
+                          {work.note}
+                        </div>
+                      </div>
+                    )}
                     </div>
                   </div>
                   
