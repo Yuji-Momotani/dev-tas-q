@@ -6,8 +6,16 @@ import type { Database } from '../types/database.types';
 import { WorkStatus } from '../constants/workStatus';
 import { handleSupabaseError } from '../utils/auth';
 
-type Worker = Database['public']['Tables']['workers']['Row'];
-type MWork = Database['public']['Tables']['m_work']['Row'];
+type Worker = {
+  id: number;
+  name: string | null;
+  unit_price_ratio: number | null;
+};
+type MWork = {
+  id: number;
+  title: string;
+  unit_price: number;
+};
 
 interface WorkAddModalProps {
   isOpen: boolean;
@@ -24,7 +32,8 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     assigneeId: null as number | null,
     quantity: 0,
     totalCost: 0,
-    deliveryDate: ''
+    deliveryDate: '',
+    note: ''
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -144,16 +153,17 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       setSaving(true);
       
       const workData = {
-        m_work_id: formData.workMasterId,
+        m_work_id: formData.workMasterId!,
         status: formData.status,
         worker_id: formData.assigneeId,
         quantity: formData.quantity || null,
         delivery_date: formData.deliveryDate || null,
+        note: formData.note || null,
       };
 
       const { error } = await supabase
         .from('works')
-        .insert([workData]);
+        .insert(workData);
 
       if (error) {
         handleSupabaseError(error, navigate, 'admin');
@@ -178,7 +188,8 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       assigneeId: null,
       quantity: 0,
       totalCost: 0,
-      deliveryDate: ''
+      deliveryDate: '',
+      note: ''
     });
     setErrors({});
     onClose();
@@ -309,6 +320,20 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
               value={formData.deliveryDate}
               onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          {/* 特記事項 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              特記事項
+            </label>
+            <textarea
+              value={formData.note}
+              onChange={(e) => handleInputChange('note', e.target.value)}
+              rows={3}
+              placeholder="作業に関する特記事項やコメントを入力してください"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"
             />
           </div>
         </div>

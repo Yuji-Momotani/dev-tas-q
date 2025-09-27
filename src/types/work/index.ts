@@ -10,6 +10,7 @@ export interface Work {
   workerID?: number;
   workerName?: string;
   workerUnitPriceRatio?: number;
+  note?: string;
 }
 
 export interface WorkDetail extends Work {

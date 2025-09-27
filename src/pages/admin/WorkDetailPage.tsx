@@ -16,9 +16,16 @@ type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
     name: string | null;
     unit_price_ratio: number | null;
   } | null;
+  m_work?: {
+    title: string;
+    unit_price: number;
+  } | null;
 };
 
-type Worker = Database['public']['Tables']['workers']['Row'];
+type Worker = {
+  id: number;
+  name: string | null;
+};
 
 const WorkDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +41,7 @@ const WorkDetailPage: React.FC = () => {
     worker_id: number | null;
     quantity: number | null;
     delivery_date: string | null;
+    note: string | null;
   } | null>(null);
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
   const [availableVideos, setAvailableVideos] = useState<WorkVideo[]>([]);
@@ -91,7 +99,8 @@ const WorkDetailPage: React.FC = () => {
         work_title: data.m_work?.title || '',
         worker_id: data.worker_id,
         quantity: data.quantity,
-        delivery_date: data.delivery_date
+        delivery_date: data.delivery_date,
+        note: data.note
       });
       
       // 作業データが取得できたら動画データも取得
@@ -249,7 +258,8 @@ const WorkDetailPage: React.FC = () => {
         work_title: workItem.m_work?.title || '',
         worker_id: workItem.worker_id,
         quantity: workItem.quantity,
-        delivery_date: workItem.delivery_date
+        delivery_date: workItem.delivery_date,
+        note: workItem.note
       });
     }
   };
@@ -264,6 +274,7 @@ const WorkDetailPage: React.FC = () => {
         worker_id: editedItem.worker_id,
         quantity: editedItem.quantity,
         delivery_date: editedItem.delivery_date,
+        note: editedItem.note,
         updated_at: new Date().toISOString()
       };
       
@@ -445,7 +456,7 @@ const WorkDetailPage: React.FC = () => {
                     <>
                       <select
                         value={editedItem.worker_id || ''}
-                        onChange={(e) => handleInputChange('worker_id', parseInt(e.target.value) || null)}
+                        onChange={(e) => handleInputChange('worker_id', e.target.value ? parseInt(e.target.value) : null)}
                         disabled={workItem.status === WorkStatus.IN_PROGRESS}
                         className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 ${
                           workItem.status === WorkStatus.IN_PROGRESS ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
@@ -478,7 +489,7 @@ const WorkDetailPage: React.FC = () => {
                     <input
                       type="number"
                       value={editedItem.quantity || ''}
-                      onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || null)}
+                      onChange={(e) => handleInputChange('quantity', e.target.value ? parseInt(e.target.value) : null)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                       min="0"
                     />
@@ -560,6 +571,26 @@ const WorkDetailPage: React.FC = () => {
                   {isEditing && (
                     <div className="text-xs text-gray-500 mt-1">
                       ※ 作業の進行状況に応じて自動反映されます
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* 特記事項 - 編集可能 */}
+              <div className="border-b border-gray-200 pb-4">
+                <label className="text-sm font-medium text-gray-700 block mb-2">特記事項</label>
+                <div className="ml-8">
+                  {isEditing ? (
+                    <textarea
+                      value={editedItem.note || ''}
+                      onChange={(e) => handleInputChange('note', e.target.value)}
+                      rows={4}
+                      placeholder="作業に関する特記事項やコメントを入力してください"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 resize-vertical"
+                    />
+                  ) : (
+                    <div className="text-lg text-gray-900 whitespace-pre-wrap">
+                      {workItem.note || '-'}
                     </div>
                   )}
                 </div>

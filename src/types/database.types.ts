@@ -391,6 +391,7 @@ export type Database = {
           delivery_date: string | null
           id: number
           m_work_id: number
+          note: string | null
           quantity: number | null
           status: number | null
           updated_at: string | null
@@ -403,6 +404,7 @@ export type Database = {
           delivery_date?: string | null
           id?: number
           m_work_id: number
+          note?: string | null
           quantity?: number | null
           status?: number | null
           updated_at?: string | null
@@ -415,6 +417,7 @@ export type Database = {
           delivery_date?: string | null
           id?: number
           m_work_id?: number
+          note?: string | null
           quantity?: number | null
           status?: number | null
           updated_at?: string | null

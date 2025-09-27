@@ -100,6 +100,7 @@ const WorkListPage: React.FC = () => {
         unitPrice: work.m_work?.unit_price || 0,
         deliveryDate: work.delivery_date ? new Date(work.delivery_date) : undefined,
         workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
+        note: work.note || undefined,
       }));
 
       // ソート処理を適用
@@ -539,6 +540,9 @@ const WorkListPage: React.FC = () => {
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     納品予定日
                   </th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                    特記事項
+                  </th>
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-20">
                     完了
                   </th>
@@ -596,6 +600,9 @@ const WorkListPage: React.FC = () => {
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500" title={item.note || ''}>
+                      {item.note ? (item.note.length > 30 ? `${item.note.substring(0, 30)}...` : item.note) : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-center">
                       {canComplete(item) ? (
