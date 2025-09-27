@@ -40,7 +40,14 @@ const WorkListPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedWorker, setSelectedWorker] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatuses, setSelectedStatuses] = useState<number[]>([
+    WorkStatus.REQUEST_PLANNED,
+    WorkStatus.REQUESTING,
+    WorkStatus.IN_PROGRESS,
+    WorkStatus.IN_DELIVERY,
+    WorkStatus.PICKUP_REQUESTING,
+    WorkStatus.WAITING_DROPOFF
+  ]);
   const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
 
   // モーダル状態
@@ -230,9 +237,9 @@ const WorkListPage: React.FC = () => {
     }
 
     // 進捗状態検索
-    if (selectedStatus) {
+    if (selectedStatuses.length > 0) {
       filtered = filtered.filter((item) => 
-        item.status === parseInt(selectedStatus)
+        selectedStatuses.includes(item.status)
       );
     }
 
@@ -240,6 +247,11 @@ const WorkListPage: React.FC = () => {
     const sortedFiltered = sortWorkItems(filtered);
     setFilteredItems(sortedFiltered);
   };
+
+  // workItemsが更新された時のみフィルターを適用（初回データ取得時）
+  useEffect(() => {
+    applyFilters();
+  }, [workItems]);
 
   // 検索ボタンクリック時の処理
   const handleSearch = () => {
@@ -266,8 +278,14 @@ const WorkListPage: React.FC = () => {
   };
 
   // 進捗状態選択時の処理
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStatus(e.target.value);
+  const handleStatusChange = (status: number) => {
+    setSelectedStatuses((prev) => {
+      if (prev.includes(status)) {
+        return prev.filter((s) => s !== status);
+      } else {
+        return [...prev, status];
+      }
+    });
   };
 
   const handleRowClick = (id: number) => {
@@ -476,7 +494,7 @@ const WorkListPage: React.FC = () => {
       )}
         
         <div className="bg-white rounded-md shadow-sm p-4 mb-6">
-          {/* Filter controls */}
+          {/* 1行目: ボタン群と基本検索条件 */}
           <div className="flex flex-wrap gap-4 items-center mb-4">
             <button
               onClick={handleOpenAddModal}
@@ -538,24 +556,6 @@ const WorkListPage: React.FC = () => {
               </select>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">進捗</span>
-              <select
-                value={selectedStatus}
-                onChange={handleStatusChange}
-                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-              >
-                <option value="">全て</option>
-                <option value={WorkStatus.REQUEST_PLANNED}>{getWorkStatusLabel(WorkStatus.REQUEST_PLANNED)}</option>
-                <option value={WorkStatus.REQUESTING}>{getWorkStatusLabel(WorkStatus.REQUESTING)}</option>
-                <option value={WorkStatus.IN_PROGRESS}>{getWorkStatusLabel(WorkStatus.IN_PROGRESS)}</option>
-                <option value={WorkStatus.IN_DELIVERY}>{getWorkStatusLabel(WorkStatus.IN_DELIVERY)}</option>
-                <option value={WorkStatus.PICKUP_REQUESTING}>{getWorkStatusLabel(WorkStatus.PICKUP_REQUESTING)}</option>
-                <option value={WorkStatus.WAITING_DROPOFF}>{getWorkStatusLabel(WorkStatus.WAITING_DROPOFF)}</option>
-                <option value={WorkStatus.COMPLETED}>{getWorkStatusLabel(WorkStatus.COMPLETED)}</option>
-              </select>
-            </div>
-            
             <button
               onClick={handleExportCSV}
               className="ml-auto flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
@@ -563,6 +563,24 @@ const WorkListPage: React.FC = () => {
               <Download size={16} />
               <span>CSV出力</span>
             </button>
+          </div>
+          
+          {/* 2行目: 進捗検索条件 */}
+          <div className="flex items-center space-x-4 mb-4">
+            <span className="text-sm font-medium">進捗</span>
+            <div className="flex flex-wrap gap-4 p-3 border border-gray-300 rounded bg-gray-50">
+              {Object.values(WorkStatus).filter(value => typeof value === 'number').map((status) => (
+                <label key={status} className="flex items-center space-x-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedStatuses.includes(status as number)}
+                    onChange={() => handleStatusChange(status as number)}
+                    className="rounded border-gray-300 focus:ring-green-500"
+                  />
+                  <span>{getWorkStatusLabel(status as WorkStatus)}</span>
+                </label>
+              ))}
+            </div>
           </div>
           
           {/* Table */}
