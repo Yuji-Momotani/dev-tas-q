@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import type { Database } from '../types/database.types';
-import { WorkStatus } from '../constants/workStatus';
+import { WorkStatus, getWorkStatusLabel } from '../constants/workStatus';
 import { handleSupabaseError } from '../utils/auth';
 
 type Worker = {
@@ -248,13 +248,13 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
                 errors.status ? 'border-red-500' : 'border-gray-300'
               }`}
             >
-              <option value={WorkStatus.REQUEST_PLANNED}>依頼予定</option>
-              <option value={WorkStatus.REQUESTING}>依頼中</option>
-              <option value={WorkStatus.IN_PROGRESS}>進行中</option>
-              <option value={WorkStatus.IN_DELIVERY}>配送中</option>
-              <option value={WorkStatus.PICKUP_REQUESTING}>集荷依頼中</option>
-              <option value={WorkStatus.WAITING_DROPOFF}>持込待ち</option>
-              <option value={WorkStatus.COMPLETED}>完了</option>
+              <option value={WorkStatus.REQUEST_PLANNED}>{getWorkStatusLabel(WorkStatus.REQUEST_PLANNED)}</option>
+              <option value={WorkStatus.REQUESTING}>{getWorkStatusLabel(WorkStatus.REQUESTING)}</option>
+              <option value={WorkStatus.IN_PROGRESS}>{getWorkStatusLabel(WorkStatus.IN_PROGRESS)}</option>
+              <option value={WorkStatus.IN_DELIVERY}>{getWorkStatusLabel(WorkStatus.IN_DELIVERY)}</option>
+              <option value={WorkStatus.PICKUP_REQUESTING}>{getWorkStatusLabel(WorkStatus.PICKUP_REQUESTING)}</option>
+              <option value={WorkStatus.WAITING_DROPOFF}>{getWorkStatusLabel(WorkStatus.WAITING_DROPOFF)}</option>
+              <option value={WorkStatus.COMPLETED}>{getWorkStatusLabel(WorkStatus.COMPLETED)}</option>
             </select>
             {errors.status && <p className="mt-1 text-sm text-red-600">{errors.status}</p>}
           </div>

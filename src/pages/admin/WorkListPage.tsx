@@ -10,7 +10,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
 import { supabase } from '../../utils/supabase';
 import type { Database } from '../../types/database.types';
-import { WorkStatus } from '../../constants/workStatus';
+import { WorkStatus, getWorkStatusLabel } from '../../constants/workStatus';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { sortWorkItems } from '../../utils/workSort';
 import { handleSupabaseError } from '../../utils/auth';
@@ -40,6 +40,7 @@ const WorkListPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedWorker, setSelectedWorker] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
 
   // モーダル状態
@@ -227,6 +228,13 @@ const WorkListPage: React.FC = () => {
       );
     }
 
+    // 進捗状態検索
+    if (selectedStatus) {
+      filtered = filtered.filter((item) => 
+        item.status === parseInt(selectedStatus)
+      );
+    }
+
     // ソート適用
     const sortedFiltered = sortWorkItems(filtered);
     setFilteredItems(sortedFiltered);
@@ -254,6 +262,11 @@ const WorkListPage: React.FC = () => {
   // 作業者選択時の処理
   const handleWorkerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedWorker(e.target.value);
+  };
+
+  // 進捗状態選択時の処理
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedStatus(e.target.value);
   };
 
   const handleRowClick = (id: number) => {
@@ -494,6 +507,24 @@ const WorkListPage: React.FC = () => {
                     {worker.name || '名前未設定'}
                   </option>
                 ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">進捗</span>
+              <select
+                value={selectedStatus}
+                onChange={handleStatusChange}
+                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+              >
+                <option value="">全て</option>
+                <option value={WorkStatus.REQUEST_PLANNED}>{getWorkStatusLabel(WorkStatus.REQUEST_PLANNED)}</option>
+                <option value={WorkStatus.REQUESTING}>{getWorkStatusLabel(WorkStatus.REQUESTING)}</option>
+                <option value={WorkStatus.IN_PROGRESS}>{getWorkStatusLabel(WorkStatus.IN_PROGRESS)}</option>
+                <option value={WorkStatus.IN_DELIVERY}>{getWorkStatusLabel(WorkStatus.IN_DELIVERY)}</option>
+                <option value={WorkStatus.PICKUP_REQUESTING}>{getWorkStatusLabel(WorkStatus.PICKUP_REQUESTING)}</option>
+                <option value={WorkStatus.WAITING_DROPOFF}>{getWorkStatusLabel(WorkStatus.WAITING_DROPOFF)}</option>
+                <option value={WorkStatus.COMPLETED}>{getWorkStatusLabel(WorkStatus.COMPLETED)}</option>
               </select>
             </div>
             
