@@ -40,7 +40,7 @@ const WorkDetailPage: React.FC = () => {
     work_title: string;
     worker_id: number | null;
     quantity: number | null;
-    delivery_date: string | null;
+    desired_delivery_date: string | null;
     note: string | null;
   } | null>(null);
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
@@ -99,7 +99,7 @@ const WorkDetailPage: React.FC = () => {
         work_title: data.m_work?.title || '',
         worker_id: data.worker_id,
         quantity: data.quantity,
-        delivery_date: data.delivery_date,
+        desired_delivery_date: data.desired_delivery_date,
         note: data.note
       });
       
@@ -258,7 +258,7 @@ const WorkDetailPage: React.FC = () => {
         work_title: workItem.m_work?.title || '',
         worker_id: workItem.worker_id,
         quantity: workItem.quantity,
-        delivery_date: workItem.delivery_date,
+        desired_delivery_date: workItem.desired_delivery_date,
         note: workItem.note
       });
     }
@@ -273,7 +273,7 @@ const WorkDetailPage: React.FC = () => {
       const updateData = {
         worker_id: editedItem.worker_id,
         quantity: editedItem.quantity,
-        delivery_date: editedItem.delivery_date,
+        desired_delivery_date: editedItem.desired_delivery_date,
         note: editedItem.note,
         updated_at: new Date().toISOString()
       };
@@ -546,17 +546,17 @@ const WorkDetailPage: React.FC = () => {
               
               {/* 納品予定日 - 編集可能 */}
               <div className="border-b border-gray-200 pb-4 flex items-center">
-                <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">納品予定日</label>
+                <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">納品希望日</label>
                 <div className="ml-8 flex-1">
                   {isEditing ? (
                     <input
                       type="date"
-                      value={editedItem.delivery_date || ''}
-                      onChange={(e) => handleInputChange('delivery_date', e.target.value)}
+                      value={editedItem.desired_delivery_date || ''}
+                      onChange={(e) => handleInputChange('desired_delivery_date', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">{formatDate(workItem.delivery_date)}</div>
+                    <div className="text-lg text-gray-900">{formatDate(workItem.desired_delivery_date)}</div>
                   )}
                 </div>
               </div>

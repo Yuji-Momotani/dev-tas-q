@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -388,11 +414,12 @@ export type Database = {
         Row: {
           created_at: string | null
           deleted_at: string | null
-          delivery_date: string | null
+          desired_delivery_date: string | null
           id: number
           m_work_id: number
           note: string | null
           quantity: number | null
+          scheduled_delivery_date: string | null
           status: number | null
           updated_at: string | null
           work_videos_id: number | null
@@ -401,11 +428,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
-          delivery_date?: string | null
+          desired_delivery_date?: string | null
           id?: number
           m_work_id: number
           note?: string | null
           quantity?: number | null
+          scheduled_delivery_date?: string | null
           status?: number | null
           updated_at?: string | null
           work_videos_id?: number | null
@@ -414,11 +442,12 @@ export type Database = {
         Update: {
           created_at?: string | null
           deleted_at?: string | null
-          delivery_date?: string | null
+          desired_delivery_date?: string | null
           id?: number
           m_work_id?: number
           note?: string | null
           quantity?: number | null
+          scheduled_delivery_date?: string | null
           status?: number | null
           updated_at?: string | null
           work_videos_id?: number | null
@@ -582,6 +611,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

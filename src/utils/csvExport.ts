@@ -38,6 +38,7 @@ export const exportWorkListCSV = (workItems: Work[]): void => {
     '数量',
     '単価',
     '費用',
+    '納品希望日',
     '納品予定日'
   ];
 
@@ -52,7 +53,8 @@ export const exportWorkListCSV = (workItems: Work[]): void => {
     item.quantity?.toString() || '-',
     item.unitPrice ? `¥${item.unitPrice}` : '-',
     (item.quantity && item.unitPrice) ? `¥${Math.floor(item.quantity * item.unitPrice * (item.workerUnitPriceRatio || 1.0)).toLocaleString()}` : '-',
-    item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'
+    item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-',
+    item.scheduledDeliveryDate ? item.scheduledDeliveryDate.toLocaleDateString('ja-JP') : '-'
   ]);
 
   const csvContent = generateCSV(headers, rows);

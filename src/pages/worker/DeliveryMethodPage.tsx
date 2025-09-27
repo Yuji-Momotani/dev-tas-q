@@ -11,6 +11,7 @@ const DeliveryMethodPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [currentWorkId, setCurrentWorkId] = useState<number | null>(null);
+  const [scheduledDeliveryDate, setScheduledDeliveryDate] = useState<string>('');
 
   const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
@@ -100,15 +101,22 @@ const DeliveryMethodPage: React.FC = () => {
       return;
     }
 
+    // 納品予定日が入力されていない場合はエラー
+    if (!scheduledDeliveryDate) {
+      setError('納品予定日を選択してください');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
 
-      // 作業ステータスを指定されたステータスに更新
+      // 作業ステータスと納品予定日を更新
       const { error: updateError } = await supabase
         .from('works')
         .update({ 
           status: status,
+          scheduled_delivery_date: scheduledDeliveryDate,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentWorkId);
@@ -200,14 +208,31 @@ const DeliveryMethodPage: React.FC = () => {
         
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center">
-            配送方法を選択してください
+            納品予定日と配送方法を選択してください
           </h2>
+          
+          {/* 納品予定日選択 */}
+          <div className="max-w-md mx-auto mb-8">
+            <label htmlFor="scheduledDeliveryDate" className="block text-lg font-medium text-gray-700 mb-3">
+              納品予定日 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              id="scheduledDeliveryDate"
+              value={scheduledDeliveryDate}
+              onChange={(e) => setScheduledDeliveryDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              disabled={loading}
+            />
+            <p className="text-sm text-gray-500 mt-2">納品予定日を選択してください</p>
+          </div>
           
           <div className="space-y-4 max-w-md mx-auto">
             {/* 持ち込み */}
             <button
               onClick={() => handleDeliveryMethod(WorkStatus.WAITING_DROPOFF)}
-              disabled={loading || !currentWorkId}
+              disabled={loading || !currentWorkId || !scheduledDeliveryDate}
               className="w-full bg-blue-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Package className="w-8 h-8" />
@@ -217,7 +242,7 @@ const DeliveryMethodPage: React.FC = () => {
             {/* 郵送 */}
             <button
               onClick={() => handleDeliveryMethod(WorkStatus.IN_DELIVERY)}
-              disabled={loading || !currentWorkId}
+              disabled={loading || !currentWorkId || !scheduledDeliveryDate}
               className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Mail className="w-8 h-8" />
@@ -227,7 +252,7 @@ const DeliveryMethodPage: React.FC = () => {
             {/* 集荷 */}
             <button
               onClick={() => handleDeliveryMethod(WorkStatus.PICKUP_REQUESTING)}
-              disabled={loading || !currentWorkId}
+              disabled={loading || !currentWorkId || !scheduledDeliveryDate}
               className="w-full bg-orange-600 text-white py-6 px-6 rounded-lg font-medium text-xl hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Truck className="w-8 h-8" />
