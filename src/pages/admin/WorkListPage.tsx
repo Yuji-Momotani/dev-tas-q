@@ -403,14 +403,32 @@ const WorkListPage: React.FC = () => {
                   }
                   .qr-container {
                     text-align: center;
+                    max-width: 600px;
                   }
                   .qr-image {
                     border: 1px solid #ccc;
+                    margin-bottom: 20px;
+                  }
+                  .work-details {
+                    text-align: left;
+                    margin-top: 20px;
+                    border: 1px solid #ddd;
+                    padding: 15px;
+                    border-radius: 5px;
+                    background-color: #f9f9f9;
+                  }
+                  .work-details p {
+                    margin: 8px 0;
+                    line-height: 1.4;
                   }
                   @media print {
                     body { 
                       margin: 0;
                       height: auto;
+                    }
+                    .work-details {
+                      background-color: white !important;
+                      border: 1px solid #000 !important;
                     }
                   }
                 </style>
@@ -419,7 +437,16 @@ const WorkListPage: React.FC = () => {
                 <div class="qr-container">
                   <h2>作業QRコード</h2>
                   <img src="${qrDataUrl}" alt="QRコード" class="qr-image" />
-                  <p>作業ID: #${item.id}</p>
+                  <div class="work-details">
+                    <p><strong>作業ID:</strong> #${item.id}</p>
+                    <p><strong>作業名:</strong> ${item.title}</p>
+                    <p><strong>作業者名:</strong> ${item.workerName || '未指定'}</p>
+                    <p><strong>数量:</strong> ${item.quantity || '未指定'}</p>
+                    <p><strong>単価:</strong> ¥${item.unitPrice?.toLocaleString() || '0'}</p>
+                    <p><strong>費用:</strong> ¥${((item.quantity || 0) * item.unitPrice).toLocaleString()}</p>
+                    <p><strong>納品希望日:</strong> ${item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString('ja-JP') : '未指定'}</p>
+                    <p><strong>特記事項:</strong> ${item.note || 'なし'}</p>
+                  </div>
                 </div>
                 <script>
                   // 少し待ってから印刷プレビューを表示
