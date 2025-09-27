@@ -10,6 +10,10 @@ import { handleSupabaseError } from '../../utils/auth';
 
 type WorkType = Tables<'works'> & {
   work_videos?: Tables<'work_videos'>;
+  m_work?: {
+    title: string;
+    unit_price: number;
+  };
 };
 
 const WorkerWorkPage: React.FC = () => {
@@ -70,7 +74,7 @@ const WorkerWorkPage: React.FC = () => {
               unit_price
             )
           `)
-          .eq('worker_id', workerData.id)
+          .eq('worker_id', workerData!.id)
           .eq('status', WorkStatus.IN_PROGRESS)
           .is('deleted_at', null)
           .order('updated_at', { ascending: false });
@@ -86,13 +90,13 @@ const WorkerWorkPage: React.FC = () => {
         }
 
         if (workData && workData.length > 0) {
-          setCurrentWorks(workData);
+          setCurrentWorks(workData as WorkType[]);
           
           // 各作業の動画サムネイルを生成
           workData.forEach((work) => {
             const video = work.work_videos;
             if (video && work.id) {
-              generateThumbnailForVideo(video, work.id);
+              generateThumbnailForVideo(video as Tables<'work_videos'>, work.id);
             }
           });
         }
@@ -340,10 +344,10 @@ const WorkerWorkPage: React.FC = () => {
                         <span className="text-gray-800">{work.quantity}</span>
                       </div>
                     )}
-                    {work.delivery_date && (
+                    {work.desired_delivery_date && (
                       <div>
-                        <span className="text-gray-600 font-medium">納期: </span>
-                        <span className="text-gray-800">{new Date(work.delivery_date).toLocaleDateString('ja-JP')}</span>
+                        <span className="text-gray-600 font-medium">納品希望日: </span>
+                        <span className="text-red-600 font-bold">{new Date(work.desired_delivery_date).toLocaleDateString('ja-JP')}</span>
                       </div>
                     )}
                     {work.m_work?.unit_price && (

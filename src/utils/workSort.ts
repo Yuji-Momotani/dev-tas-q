@@ -21,7 +21,7 @@ export const getStatusPriority = (status: WorkStatus): number => {
 /**
  * 作業アイテムのソート処理
  * 第一ソート：ステータス優先度順
- * 第二ソート：納品予定日の昇順
+ * 第二ソート：納品希望日の昇順
  * Note: supabaseのorder句ではcaseを用いた複雑なソート処理ができないようだったのでフロントでソート実行
  */
 export const sortWorkItems = (items: Work[]): Work[] => {
@@ -34,7 +34,7 @@ export const sortWorkItems = (items: Work[]): Work[] => {
       return statusPriorityA - statusPriorityB;
     }
     
-    // 第二ソート：納品予定日の昇順
+    // 第二ソート：納品希望日の昇順
     const dateA = a.deliveryDate;
     const dateB = b.deliveryDate;
     

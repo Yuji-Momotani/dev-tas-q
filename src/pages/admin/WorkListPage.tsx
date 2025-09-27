@@ -99,7 +99,8 @@ const WorkListPage: React.FC = () => {
         workerID: work.workers?.id || undefined,
         quantity: work.quantity || undefined,
         unitPrice: work.m_work?.unit_price || 0,
-        deliveryDate: work.delivery_date ? new Date(work.delivery_date) : undefined,
+        deliveryDate: work.desired_delivery_date ? new Date(work.desired_delivery_date) : undefined,
+        scheduledDeliveryDate: work.scheduled_delivery_date ? new Date(work.scheduled_delivery_date) : undefined,
         workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
         note: work.note || undefined,
       }));
@@ -206,7 +207,7 @@ const WorkListPage: React.FC = () => {
       );
     }
 
-    // 納品予定日の範囲検索
+    // 納品希望日の範囲検索
     if (startDate || endDate) {
       filtered = filtered.filter((item) => {
         if (!item.deliveryDate) return false;
@@ -250,7 +251,7 @@ const WorkListPage: React.FC = () => {
     setFreewordQuery(e.target.value);
   };
 
-  // 納品予定日変更時の処理
+  // 納品希望日変更時の処理
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStartDate(e.target.value);
   };
@@ -478,7 +479,7 @@ const WorkListPage: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">納品予定日</span>
+              <span className="text-sm font-medium">納品希望日</span>
               <input
                 type="date"
                 value={startDate}
@@ -569,6 +570,9 @@ const WorkListPage: React.FC = () => {
                     費用
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                    納品希望日
+                  </th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     納品予定日
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
@@ -631,6 +635,9 @@ const WorkListPage: React.FC = () => {
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
+                      {item.scheduledDeliveryDate ? item.scheduledDeliveryDate.toLocaleDateString('ja-JP') : '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500" title={item.note || ''}>
                       {item.note ? (item.note.length > 30 ? `${item.note.substring(0, 30)}...` : item.note) : '-'}

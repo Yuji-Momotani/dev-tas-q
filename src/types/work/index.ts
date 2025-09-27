@@ -7,6 +7,7 @@ export interface Work {
   quantity?: number;
   unitPrice: number;
   deliveryDate?: Date;
+  scheduledDeliveryDate?: Date;
   workerID?: number;
   workerName?: string;
   workerUnitPriceRatio?: number;

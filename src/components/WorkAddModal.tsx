@@ -157,7 +157,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
         status: formData.status,
         worker_id: formData.assigneeId,
         quantity: formData.quantity || null,
-        delivery_date: formData.deliveryDate || null,
+        desired_delivery_date: formData.deliveryDate || null,
         note: formData.note || null,
       };
 
@@ -310,10 +310,10 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
             </div>
           </div>
 
-          {/* 納品予定日 */}
+          {/* 納品希望日 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              納品予定日
+              納品希望日
             </label>
             <input
               type="date"
