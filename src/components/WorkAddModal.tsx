@@ -334,7 +334,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
             </div>
           </div>
 
-          {/* 納品希望日 */}
+          {/* 納入締切日 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               納入締切日
