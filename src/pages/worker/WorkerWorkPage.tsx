@@ -12,7 +12,7 @@ type WorkType = Tables<'works'> & {
   work_videos?: Tables<'work_videos'>;
   m_work?: {
     title: string;
-    unit_price: number;
+    default_unit_price: number;
   };
 };
 
@@ -71,7 +71,7 @@ const WorkerWorkPage: React.FC = () => {
             ),
             m_work (
               title,
-              unit_price
+              default_unit_price
             )
           `)
           .eq('worker_id', workerData!.id)
@@ -344,16 +344,16 @@ const WorkerWorkPage: React.FC = () => {
                         <span className="text-gray-800">{work.quantity}</span>
                       </div>
                     )}
-                    {work.desired_delivery_date && (
+                    {work.delivery_deadline && (
                       <div>
-                        <span className="text-gray-600 font-medium">納品希望日: </span>
-                        <span className="text-red-600 font-bold">{new Date(work.desired_delivery_date).toLocaleDateString('ja-JP')}</span>
+                        <span className="text-gray-600 font-medium">納入締切日: </span>
+                        <span className="text-red-600 font-bold">{new Date(work.delivery_deadline).toLocaleDateString('ja-JP')}</span>
                       </div>
                     )}
-                    {work.m_work?.unit_price && (
+                    {work.m_work?.default_unit_price && (
                       <div>
                         <span className="text-gray-600 font-medium">単価: </span>
-                        <span className="text-gray-800">¥{work.m_work.unit_price.toLocaleString()}</span>
+                        <span className="text-gray-800">¥{work.m_work.default_unit_price.toLocaleString()}</span>
                       </div>
                     )}
                     {work.note && (

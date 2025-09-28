@@ -38,7 +38,7 @@ export const exportWorkListCSV = (workItems: Work[]): void => {
     '数量',
     '単価',
     '費用',
-    '納品希望日',
+    '納入締切日',
     '納品予定日'
   ];
 

@@ -21,7 +21,7 @@ const WorkMasterPage: React.FC = () => {
   const [editingWork, setEditingWork] = useState<MWork | null>(null);
   const [formData, setFormData] = useState({
     title: '',
-    unit_price: ''
+    default_unit_price: ''
   });
 
   const checkAuthentication = useCallback(async () => {
@@ -71,13 +71,13 @@ const WorkMasterPage: React.FC = () => {
       setEditingWork(work);
       setFormData({
         title: work.title,
-        unit_price: work.unit_price.toString()
+        default_unit_price: work.default_unit_price.toString()
       });
     } else {
       setEditingWork(null);
       setFormData({
         title: '',
-        unit_price: ''
+        default_unit_price: ''
       });
     }
     setIsModalOpen(true);
@@ -88,7 +88,7 @@ const WorkMasterPage: React.FC = () => {
     setEditingWork(null);
     setFormData({
       title: '',
-      unit_price: ''
+      default_unit_price: ''
     });
   };
 
@@ -100,7 +100,7 @@ const WorkMasterPage: React.FC = () => {
       return;
     }
     
-    const unitPrice = parseInt(formData.unit_price);
+    const unitPrice = parseInt(formData.default_unit_price);
     if (isNaN(unitPrice) || unitPrice < 0) {
       alert('有効な単価を入力してください');
       return;
@@ -115,7 +115,7 @@ const WorkMasterPage: React.FC = () => {
           .from('m_work')
           .update({
             title: formData.title.trim(),
-            unit_price: unitPrice,
+            default_unit_price: unitPrice,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingWork.id);
@@ -132,7 +132,7 @@ const WorkMasterPage: React.FC = () => {
           .from('m_work')
           .insert({
             title: formData.title.trim(),
-            unit_price: unitPrice
+            default_unit_price: unitPrice
           });
           
         if (error) {
@@ -251,7 +251,7 @@ const WorkMasterPage: React.FC = () => {
                         {work.title}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
-                        ¥{work.unit_price.toLocaleString()}
+                        ¥{work.default_unit_price.toLocaleString()}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                         {new Date(work.created_at).toLocaleDateString('ja-JP', {
@@ -320,8 +320,8 @@ const WorkMasterPage: React.FC = () => {
                   <span className="absolute left-3 top-2 text-gray-500">¥</span>
                   <input
                     type="number"
-                    value={formData.unit_price}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unit_price: e.target.value }))}
+                    value={formData.default_unit_price}
+                    onChange={(e) => setFormData(prev => ({ ...prev, default_unit_price: e.target.value }))}
                     className="w-full border border-gray-300 rounded px-3 py-2 pl-8 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                     placeholder="0"
                     min="0"

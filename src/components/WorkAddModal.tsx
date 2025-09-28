@@ -14,7 +14,7 @@ type Worker = {
 type MWork = {
   id: number;
   title: string;
-  unit_price: number;
+  default_unit_price: number;
 };
 
 interface WorkAddModalProps {
@@ -31,6 +31,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     assignee: '',
     assigneeId: null as number | null,
     quantity: 0,
+    unitPrice: 0,
     totalCost: 0,
     deliveryDate: '',
     note: ''
@@ -72,7 +73,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     try {
       const { data, error } = await supabase
         .from('m_work')
-        .select('id, title, unit_price')
+        .select('id, title, default_unit_price')
         .order('title');
 
       if (error) throw error;
@@ -95,15 +96,19 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       updatedData.assigneeId = selectedWorker ? selectedWorker.id : null;
     }
 
-    // 料金マスタ選択時に、IDを設定
+    // 料金マスタ選択時に、IDと単価を設定
     if (field === 'workMasterId') {
       updatedData.workMasterId = Number(value) || null;
+      const selectedWorkMaster = workMasters.find(work => work.id === Number(value));
+      if (selectedWorkMaster) {
+        updatedData.unitPrice = selectedWorkMaster.default_unit_price;
+      }
     }
 
-    // 数量、料金マスタ、または作業者が変更された場合、費用を自動計算
-    if (field === 'quantity' || field === 'workMasterId' || field === 'assignee') {
+    // 数量、単価、または作業者が変更された場合、費用を自動計算
+    if (field === 'quantity' || field === 'unitPrice' || field === 'workMasterId' || field === 'assignee') {
       const quantity = field === 'quantity' ? Number(value) : formData.quantity;
-      const workMasterId = field === 'workMasterId' ? Number(value) : formData.workMasterId;
+      const unitPrice = field === 'unitPrice' ? Number(value) : (field === 'workMasterId' ? updatedData.unitPrice : formData.unitPrice);
       
       let selectedWorker = null;
       if (field === 'assignee') {
@@ -112,8 +117,6 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
         selectedWorker = workers.find(worker => worker.name === formData.assignee);
       }
       
-      const selectedWorkMaster = workMasters.find(work => work.id === workMasterId);
-      const unitPrice = selectedWorkMaster?.unit_price || 0;
       const unitPriceRatio = selectedWorker?.unit_price_ratio || 1.0;
       
       // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
@@ -140,6 +143,10 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       newErrors.status = '進捗は必須です';
     }
 
+    if (formData.note.length > 200) {
+      newErrors.note = '特記事項は200文字以内で入力してください';
+    }
+
     // 進行中の作業のチェックは削除（複数作業の同時進行を可能にするため）
 
     setErrors(newErrors);
@@ -157,7 +164,8 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
         status: formData.status,
         worker_id: formData.assigneeId,
         quantity: formData.quantity || null,
-        desired_delivery_date: formData.deliveryDate || null,
+        unit_price: formData.unitPrice,
+        delivery_deadline: formData.deliveryDate || null,
         note: formData.note || null,
       };
 
@@ -187,6 +195,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       assignee: '',
       assigneeId: null,
       quantity: 0,
+      unitPrice: 0,
       totalCost: 0,
       deliveryDate: '',
       note: ''
@@ -228,7 +237,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
               <option value="">作業種別を選択してください</option>
               {workMasters.map((work) => (
                 <option key={work.id} value={work.id}>
-                  {work.title} / ¥{work.unit_price.toLocaleString()}
+                  {work.title} / ¥{work.default_unit_price.toLocaleString()}
                 </option>
               ))}
             </select>
@@ -279,7 +288,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* 数量 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -289,6 +298,21 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
                 type="number"
                 value={formData.quantity}
                 onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                min="0"
+                placeholder="0"
+              />
+            </div>
+
+            {/* 単価 (編集可能) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                単価
+              </label>
+              <input
+                type="number"
+                value={formData.unitPrice}
+                onChange={(e) => handleInputChange('unitPrice', parseInt(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 min="0"
                 placeholder="0"
@@ -313,7 +337,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
           {/* 納品希望日 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              納品希望日
+              納入締切日
             </label>
             <input
               type="date"
@@ -332,9 +356,20 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
               value={formData.note}
               onChange={(e) => handleInputChange('note', e.target.value)}
               rows={3}
+              maxLength={200}
               placeholder="作業に関する特記事項やコメントを入力してください"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical ${
+                errors.note ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            <div className="mt-1 flex justify-between items-center">
+              <div>
+                {errors.note && <p className="text-sm text-red-600">{errors.note}</p>}
+              </div>
+              <div className="text-xs text-gray-500">
+                {formData.note.length}/200文字
+              </div>
+            </div>
           </div>
         </div>
 
