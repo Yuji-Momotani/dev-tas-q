@@ -110,6 +110,10 @@ const WorkerListPage: React.FC = () => {
           id,
           name,
           email,
+          auth_user_id,
+          birthday,
+          address,
+          unit_price_ratio,
           next_visit_date,
           group_id,
           works!left (
@@ -118,7 +122,7 @@ const WorkerListPage: React.FC = () => {
             updated_at,
             m_work (
               title,
-              unit_price
+              default_unit_price
             )
           ),
           worker_skills!left (
@@ -142,11 +146,11 @@ const WorkerListPage: React.FC = () => {
       // データを変換
       const workerList: Worker[] = (data || []).map(worker => {
         const works = worker.works || [];
-        const inProgressWork = works.find(w => w.status === WorkStatus.IN_PROGRESS)?.m_work?.title || null;
+        const inProgressWork = works.find(w => w.status === WorkStatus.IN_PROGRESS)?.m_work?.title || undefined;
         
         // 予定作業は複数ある可能性があるので、スラッシュ区切りで結合
         const plannedWorks = works.filter(w => w.status === WorkStatus.REQUEST_PLANNED).map(w => w.m_work?.title).filter(Boolean);
-        const plannedWork = plannedWorks.length > 0 ? plannedWorks.join(' / ') : null;
+        const plannedWork = plannedWorks.length > 0 ? plannedWorks.join(' / ') : undefined;
         
         // 最新の作業日時を取得（完了した作業から）
         const completedWorks = works.filter(w => w.status === WorkStatus.COMPLETED);
@@ -155,12 +159,12 @@ const WorkerListPage: React.FC = () => {
           : null;
 
         // スキル情報を取得
-        const skill = worker.worker_skills && worker.worker_skills.length > 0 && worker.worker_skills[0].m_rank 
+        const skill = (worker.worker_skills && worker.worker_skills.length > 0 && worker.worker_skills[0].m_rank 
           ? worker.worker_skills[0].m_rank.rank 
-          : null;
+          : null) || undefined;
 
         // グループ情報を取得
-        const groupName = worker.groups?.name || null;
+        const groupName = worker.groups?.name || undefined;
 
         return {
           id: worker.id,

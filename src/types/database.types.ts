@@ -209,23 +209,23 @@ export type Database = {
       m_work: {
         Row: {
           created_at: string
+          default_unit_price: number
           id: number
           title: string
-          unit_price: number
           updated_at: string
         }
         Insert: {
           created_at?: string
+          default_unit_price: number
           id?: number
           title: string
-          unit_price: number
           updated_at?: string
         }
         Update: {
           created_at?: string
+          default_unit_price?: number
           id?: number
           title?: string
-          unit_price?: number
           updated_at?: string
         }
         Relationships: []
@@ -414,13 +414,14 @@ export type Database = {
         Row: {
           created_at: string | null
           deleted_at: string | null
-          desired_delivery_date: string | null
+          delivery_deadline: string | null
           id: number
           m_work_id: number
           note: string | null
           quantity: number | null
           scheduled_delivery_date: string | null
           status: number | null
+          unit_price: number
           updated_at: string | null
           work_videos_id: number | null
           worker_id: number | null
@@ -428,13 +429,14 @@ export type Database = {
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
-          desired_delivery_date?: string | null
+          delivery_deadline?: string | null
           id?: number
           m_work_id: number
           note?: string | null
           quantity?: number | null
           scheduled_delivery_date?: string | null
           status?: number | null
+          unit_price?: number
           updated_at?: string | null
           work_videos_id?: number | null
           worker_id?: number | null
@@ -442,13 +444,14 @@ export type Database = {
         Update: {
           created_at?: string | null
           deleted_at?: string | null
-          desired_delivery_date?: string | null
+          delivery_deadline?: string | null
           id?: number
           m_work_id?: number
           note?: string | null
           quantity?: number | null
           scheduled_delivery_date?: string | null
           status?: number | null
+          unit_price?: number
           updated_at?: string | null
           work_videos_id?: number | null
           worker_id?: number | null

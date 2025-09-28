@@ -28,9 +28,10 @@ type WorkerWithRelations = Database['public']['Tables']['workers']['Row'] & {
     id: number;
     status: number | null;
     quantity: number | null;
+    unit_price: number;
     m_work?: {
       title: string;
-      unit_price: number;
+      default_unit_price: number;
     } | null;
   }>;
 };
@@ -121,9 +122,10 @@ const WorkerDetailPage: React.FC = () => {
             id,
             status,
             quantity,
+            unit_price,
             m_work (
               title,
-              unit_price
+              default_unit_price
             )
           )
         `)
@@ -180,8 +182,8 @@ const WorkerDetailPage: React.FC = () => {
             title: work.m_work?.title || '作業名未設定',
             status: (work.status || WorkStatus.REQUEST_PLANNED) as WorkStatus,
             quantity: work.quantity || 0,
-            // m_workテーブルから単価を取得
-            unitPrice: work.m_work?.unit_price || 0
+            // works.unit_priceを使用（0の場合も0で計算）
+            unitPrice: work.unit_price
           }));
           
           // ソート処理を適用

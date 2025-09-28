@@ -18,7 +18,7 @@ type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
   } | null;
   m_work?: {
     title: string;
-    unit_price: number;
+    default_unit_price: number;
   } | null;
 };
 
@@ -40,7 +40,7 @@ const WorkDetailPage: React.FC = () => {
     work_title: string;
     worker_id: number | null;
     quantity: number | null;
-    desired_delivery_date: string | null;
+    delivery_deadline: string | null;
     note: string | null;
   } | null>(null);
   const [workVideos, setWorkVideos] = useState<WorkVideo[]>([]);
@@ -73,7 +73,7 @@ const WorkDetailPage: React.FC = () => {
           ),
           m_work (
             title,
-            unit_price
+            default_unit_price
           )
         `)
         .eq('id', Number(id))
@@ -99,7 +99,7 @@ const WorkDetailPage: React.FC = () => {
         work_title: data.m_work?.title || '',
         worker_id: data.worker_id,
         quantity: data.quantity,
-        desired_delivery_date: data.desired_delivery_date,
+        delivery_deadline: data.delivery_deadline,
         note: data.note
       });
       
@@ -258,7 +258,7 @@ const WorkDetailPage: React.FC = () => {
         work_title: workItem.m_work?.title || '',
         worker_id: workItem.worker_id,
         quantity: workItem.quantity,
-        desired_delivery_date: workItem.desired_delivery_date,
+        delivery_deadline: workItem.delivery_deadline,
         note: workItem.note
       });
     }
@@ -267,13 +267,19 @@ const WorkDetailPage: React.FC = () => {
   const handleSave = async () => {
     if (!workItem || !editedItem || !id) return;
 
+    // バリデーション
+    if (editedItem.note && editedItem.note.length > 200) {
+      alert('特記事項は200文字以内で入力してください');
+      return;
+    }
+
     try {
       setLoading(true);
 
       const updateData = {
         worker_id: editedItem.worker_id,
         quantity: editedItem.quantity,
-        desired_delivery_date: editedItem.desired_delivery_date,
+        delivery_deadline: editedItem.delivery_deadline,
         note: editedItem.note,
         updated_at: new Date().toISOString()
       };
@@ -324,9 +330,9 @@ const WorkDetailPage: React.FC = () => {
 
   // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
   const calculateTotalCost = (): number => {
-    if (!editedItem?.quantity || !workItem?.m_work?.unit_price) return 0;
+    if (!editedItem?.quantity || !workItem?.unit_price) return 0;
     const unitPriceRatio = workItem?.workers?.unit_price_ratio || 1.0;
-    return Math.floor(editedItem.quantity * workItem.m_work.unit_price * unitPriceRatio);
+    return Math.floor(editedItem.quantity * workItem.unit_price * unitPriceRatio);
   };
 
   // 動画選択変更処理
@@ -504,7 +510,7 @@ const WorkDetailPage: React.FC = () => {
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">単価</label>
                 <div className="ml-8 flex-1">
                   <div className="text-lg text-gray-900">
-                    ¥{(workItem.m_work?.unit_price || 0).toLocaleString()}
+                    ¥{workItem.unit_price.toLocaleString()}
                   </div>
                   {isEditing && (
                     <div className="text-xs text-gray-500 mt-1">
@@ -546,17 +552,17 @@ const WorkDetailPage: React.FC = () => {
               
               {/* 納品予定日 - 編集可能 */}
               <div className="border-b border-gray-200 pb-4 flex items-center">
-                <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">納品希望日</label>
+                <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">納入締切日</label>
                 <div className="ml-8 flex-1">
                   {isEditing ? (
                     <input
                       type="date"
-                      value={editedItem.desired_delivery_date || ''}
-                      onChange={(e) => handleInputChange('desired_delivery_date', e.target.value)}
+                      value={editedItem.delivery_deadline || ''}
+                      onChange={(e) => handleInputChange('delivery_deadline', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">{formatDate(workItem.desired_delivery_date)}</div>
+                    <div className="text-lg text-gray-900">{formatDate(workItem.delivery_deadline)}</div>
                   )}
                 </div>
               </div>
@@ -581,13 +587,19 @@ const WorkDetailPage: React.FC = () => {
                 <label className="text-sm font-medium text-gray-700 block mb-2">特記事項</label>
                 <div className="ml-8">
                   {isEditing ? (
-                    <textarea
-                      value={editedItem.note || ''}
-                      onChange={(e) => handleInputChange('note', e.target.value)}
-                      rows={4}
-                      placeholder="作業に関する特記事項やコメントを入力してください"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 resize-vertical"
-                    />
+                    <div>
+                      <textarea
+                        value={editedItem.note || ''}
+                        onChange={(e) => handleInputChange('note', e.target.value)}
+                        rows={4}
+                        maxLength={200}
+                        placeholder="作業に関する特記事項やコメントを入力してください"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 resize-vertical"
+                      />
+                      <div className="mt-1 text-xs text-gray-500 text-right">
+                        {(editedItem.note || '').length}/200文字
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-lg text-gray-900 whitespace-pre-wrap">
                       {workItem.note || '-'}

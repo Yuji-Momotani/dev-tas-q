@@ -24,7 +24,7 @@ type WorkWithWorkerAndMaster = Database['public']['Tables']['works']['Row'] & {
   } | null;
   m_work?: {
     title: string;
-    unit_price: number;
+    default_unit_price: number;
   } | null;
 };
 
@@ -88,7 +88,7 @@ const WorkListPage: React.FC = () => {
           ),
           m_work (
             title,
-            unit_price
+            default_unit_price
           )
         `)
         .is('deleted_at', null);
@@ -105,8 +105,8 @@ const WorkListPage: React.FC = () => {
         workerName: work.workers?.name || undefined,
         workerID: work.workers?.id || undefined,
         quantity: work.quantity || undefined,
-        unitPrice: work.m_work?.unit_price || 0,
-        deliveryDate: work.desired_delivery_date ? new Date(work.desired_delivery_date) : undefined,
+        unitPrice: work.unit_price,
+        deliveryDate: work.delivery_deadline ? new Date(work.delivery_deadline) : undefined,
         scheduledDeliveryDate: work.scheduled_delivery_date ? new Date(work.scheduled_delivery_date) : undefined,
         workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
         note: work.note || undefined,
@@ -214,7 +214,7 @@ const WorkListPage: React.FC = () => {
       );
     }
 
-    // 納品希望日の範囲検索
+    // 納入締切日の範囲検索
     if (startDate || endDate) {
       filtered = filtered.filter((item) => {
         if (!item.deliveryDate) return false;
@@ -263,7 +263,7 @@ const WorkListPage: React.FC = () => {
     setFreewordQuery(e.target.value);
   };
 
-  // 納品希望日変更時の処理
+  // 納入締切日変更時の処理
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStartDate(e.target.value);
   };
@@ -462,7 +462,7 @@ const WorkListPage: React.FC = () => {
                     <p><strong>数量:</strong> ${item.quantity || '未指定'}</p>
                     <p><strong>単価:</strong> ¥${item.unitPrice?.toLocaleString() || '0'}</p>
                     <p><strong>費用:</strong> ¥${((item.quantity || 0) * item.unitPrice).toLocaleString()}</p>
-                    <p><strong>納品希望日:</strong> ${item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString('ja-JP') : '未指定'}</p>
+                    <p><strong>納入締切日:</strong> ${item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString('ja-JP') : '未指定'}</p>
                     <p><strong>特記事項:</strong> ${item.note || 'なし'}</p>
                   </div>
                 </div>
@@ -524,7 +524,7 @@ const WorkListPage: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">納品希望日</span>
+              <span className="text-sm font-medium">納入締切日</span>
               <input
                 type="date"
                 value={startDate}
@@ -615,7 +615,7 @@ const WorkListPage: React.FC = () => {
                     費用
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
-                    納品希望日
+                    納入締切日
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     納品予定日
