@@ -599,7 +599,7 @@ const WorkListPage: React.FC = () => {
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     作業名
                   </th>
-                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700 min-w-28">
                     進捗
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
