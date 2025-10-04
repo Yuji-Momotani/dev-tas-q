@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, QrCode, LogOut, CheckCircle } from 'lucide-react';
+import { QrCode, CheckCircle } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
 import { isValidYouTubeUrl, generateVideoThumbnail } from '../../utils/video';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
 import { WorkStatus, getWorkStatusLabel } from '../../constants/workStatus';
 import { handleSupabaseError } from '../../utils/auth';
+import WorkerLayout from '../../components/WorkerLayout';
 
 type WorkType = Tables<'works'> & {
   work_videos?: Tables<'work_videos'>;
@@ -25,9 +26,7 @@ const WorkerWorkPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [videoThumbnails, setVideoThumbnails] = useState<{[key: number]: string}>({});
 
-  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
-
-  // 作業者の認証状態と作業データを取得
+  // 作業データを取得
   useEffect(() => {
     const fetchWorkerWork = async () => {
       try {
@@ -38,7 +37,6 @@ const WorkerWorkPage: React.FC = () => {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
-          navigate('/worker/login');
           return;
         }
 
@@ -51,12 +49,8 @@ const WorkerWorkPage: React.FC = () => {
           .single();
 
         if (workerError || !workerData) {
-          try {
-            handleSupabaseError(workerError, navigate, 'worker', 'worker information retrieval');
-          } catch (e) {
-            setError('作業者情報が見つかりません');
-            return;
-          }
+          setError('作業者情報が見つかりません');
+          return;
         }
 
         // 進行中の作業を全て取得
@@ -206,32 +200,9 @@ const WorkerWorkPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-green-600 text-white py-4 px-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-1 w-8">
-              <img 
-                src={logoPath}
-                alt="ロゴ"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h1 className="text-xl font-medium">作業画面</h1>
-          </div>
-          {/* <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>ログアウト</span>
-          </button> */}
-        </div>
-      </header>
-
+    <WorkerLayout title="作業画面">
       {/* Navigation Buttons */}
-      <div className="p-4">
+      <div>
         <div className="flex space-x-3 mb-6">
           <button
             onClick={handleMyPage}
@@ -416,7 +387,7 @@ const WorkerWorkPage: React.FC = () => {
       <footer className="p-4 text-right">
         <p className="text-xs text-gray-500">©️〇〇〇〇会社</p>
       </footer>
-    </div>
+    </WorkerLayout>
   );
 };
 

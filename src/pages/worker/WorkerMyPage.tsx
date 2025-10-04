@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Edit, Save, X, Camera } from 'lucide-react';
+import { Edit, Save, X, Camera } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { Tables } from '../../types/database.types';
 import { WorkStatus, getWorkStatusLabel, getWorkStatusBadgeClass } from '../../constants/workStatus';
 import { sortWorkItems } from '../../utils/workSort';
 import { getWorkerImageUrl } from '../../utils/image';
 import { handleSupabaseError } from '../../utils/auth';
+import WorkerLayout from '../../components/WorkerLayout';
 
 type WorkerType = Tables<'workers'> & {
   groups?: {
@@ -48,7 +49,6 @@ const WorkerMyPage: React.FC = () => {
   const [profileImageUrl, setProfileImageUrl] = useState<string>('');
 
   const unmannedPath = new URL("../../assets/unmanned.png", import.meta.url).href;
-  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
   
   // デフォルト値
   const defaultProfile: UserProfile = {
@@ -78,7 +78,6 @@ const WorkerMyPage: React.FC = () => {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
-          navigate('/worker/login');
           return;
         }
 
@@ -102,12 +101,8 @@ const WorkerMyPage: React.FC = () => {
           .single();
 
         if (workerError) {
-          try {
-            handleSupabaseError(workerError, navigate, 'worker', '作業者情報取得');
-          } catch (e) {
-            setError('作業者情報が見つかりません');
-            return;
-          }
+          setError('作業者情報が見つかりません');
+          return;
         }
         
         if (!workerData) {
@@ -369,32 +364,9 @@ const WorkerMyPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-green-600 text-white py-4 px-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-1 w-8">
-              <img 
-                src={logoPath}
-                alt="ロゴ"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h1 className="text-xl font-medium">マイページ</h1>
-          </div>
-          {/* <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>ログアウト</span>
-          </button> */}
-        </div>
-      </header>
-
+    <WorkerLayout title="マイページ">
       {/* Navigation */}
-      <div className="p-4">
+      <div>
         <button
           onClick={handleBackToWork}
           className="px-6 py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors mb-6"
@@ -675,7 +647,7 @@ const WorkerMyPage: React.FC = () => {
       <footer className="p-4 text-right">
         <p className="text-xs text-gray-500">©️〇〇〇〇会社</p>
       </footer>
-    </div>
+    </WorkerLayout>
   );
 };
 

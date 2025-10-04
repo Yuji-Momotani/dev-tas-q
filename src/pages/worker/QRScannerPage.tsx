@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut } from 'lucide-react';
 import QrScanner from 'qr-scanner';
 import { supabase } from '../../utils/supabase';
 import { handleSupabaseError } from '../../utils/auth';
+import WorkerLayout from '../../components/WorkerLayout';
 
 const QRScannerPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,10 +17,12 @@ const QRScannerPage: React.FC = () => {
   const [showLinkButton, setShowLinkButton] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentWorkerId, setCurrentWorkerId] = useState<number | null>(null);
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
 
-  const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
   useEffect(() => {
+    if (!isLayoutReady) return; // 認証完了まで待機
+    
     const initializeScanner = async () => {
       // 二重初期化を防ぐ
       if (isInitializingRef.current) return;
@@ -34,7 +36,7 @@ const QRScannerPage: React.FC = () => {
     return () => {
       stopQRScanner();
     };
-  }, []);
+  }, [isLayoutReady]);
 
   // 作業者情報を取得
   const fetchWorkerInfo = async () => {
@@ -42,7 +44,6 @@ const QRScannerPage: React.FC = () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        navigate('/worker/login');
         return;
       }
 
@@ -54,12 +55,8 @@ const QRScannerPage: React.FC = () => {
         .single();
 
       if (workerError || !workerData) {
-        try {
-          handleSupabaseError(workerError, navigate, 'worker', 'worker information retrieval');
-        } catch (e) {
-          setError('作業者情報が見つかりません');
-          return;
-        }
+        setError('作業者情報が見つかりません');
+        return;
       }
 
       setCurrentWorkerId(workerData.id);
@@ -160,12 +157,6 @@ const QRScannerPage: React.FC = () => {
     setIsScanning(false);
     setIsWaitingForQR(false);
   };
-
-  // const handleLogout = async () => {
-  //   stopQRScanner();
-  //   await supabase.auth.signOut();
-  //   navigate('/worker/login');
-  // };
 
   const handleBack = () => {
     stopQRScanner();
@@ -278,32 +269,13 @@ const QRScannerPage: React.FC = () => {
 
 
   return (
-    <div className="h-screen bg-black overflow-hidden">
-      {/* Header */}
-      <header className="bg-green-600 text-white py-4 px-6 relative z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-md p-1 w-8">
-              <img 
-                src={logoPath}
-                alt="ロゴ"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h1 className="text-xl font-medium">QR読取</h1>
-          </div>
-          {/* <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 border border-white rounded text-sm hover:bg-green-700 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>ログアウト</span>
-          </button> */}
-        </div>
-      </header>
-
-      {/* Camera View */}
-      <div className="relative h-full flex items-center justify-center">
+    <WorkerLayout 
+      title="QR読取" 
+      onReady={() => setIsLayoutReady(true)}
+    >
+      <div className="relative bg-black overflow-hidden -m-4" style={{ height: 'calc(100vh - 60px)' }}>
+        {/* Camera View */}
+        <div className="relative h-full flex items-center justify-center">
         {error && !isScanning ? (
           <div className="text-center p-8">
             <p className="text-white text-lg mb-4">{error}</p>
@@ -399,11 +371,12 @@ const QRScannerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="absolute bottom-4 right-4">
-        <p className="text-xs text-gray-400">©️〇〇〇〇会社</p>
-      </footer>
-    </div>
+        {/* Footer */}
+        <footer className="absolute bottom-4 right-4">
+          <p className="text-xs text-gray-400">©️〇〇〇〇会社</p>
+        </footer>
+      </div>
+    </WorkerLayout>
   );
 };
 
