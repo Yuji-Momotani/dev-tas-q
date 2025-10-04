@@ -40,6 +40,7 @@ const WorkDetailPage: React.FC = () => {
     work_title: string;
     worker_id: number | null;
     quantity: number | null;
+    unit_price: number | null;
     delivery_deadline: string | null;
     note: string | null;
   } | null>(null);
@@ -99,6 +100,7 @@ const WorkDetailPage: React.FC = () => {
         work_title: data.m_work?.title || '',
         worker_id: data.worker_id,
         quantity: data.quantity,
+        unit_price: data.unit_price,
         delivery_deadline: data.delivery_deadline,
         note: data.note
       });
@@ -258,6 +260,7 @@ const WorkDetailPage: React.FC = () => {
         work_title: workItem.m_work?.title || '',
         worker_id: workItem.worker_id,
         quantity: workItem.quantity,
+        unit_price: workItem.unit_price,
         delivery_deadline: workItem.delivery_deadline,
         note: workItem.note
       });
@@ -279,12 +282,13 @@ const WorkDetailPage: React.FC = () => {
       const updateData = {
         worker_id: editedItem.worker_id,
         quantity: editedItem.quantity,
+        unit_price: editedItem.unit_price,
         delivery_deadline: editedItem.delivery_deadline,
         note: editedItem.note,
         updated_at: new Date().toISOString()
       };
       
-      // Note: work_title and unit_price are now in m_work table and should be updated there
+      // Note: work_title is in m_work table and should be updated there, but unit_price is now in works table
 
       const { error } = await supabase
         .from('works')
@@ -330,9 +334,11 @@ const WorkDetailPage: React.FC = () => {
 
   // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
   const calculateTotalCost = (): number => {
-    if (!editedItem?.quantity || !workItem?.unit_price) return 0;
+    if (!editedItem?.quantity) return 0;
+    // 編集中の単価を優先、なければ現在の単価を使用
+    const unitPrice = editedItem?.unit_price || workItem?.unit_price || 0;
     const unitPriceRatio = workItem?.workers?.unit_price_ratio || 1.0;
-    return Math.floor(editedItem.quantity * workItem.unit_price * unitPriceRatio);
+    return Math.floor(editedItem.quantity * unitPrice * unitPriceRatio);
   };
 
   // 動画選択変更処理
@@ -505,16 +511,27 @@ const WorkDetailPage: React.FC = () => {
                 </div>
               </div>
               
-              {/* 単価 - 編集可能 */}
+              {/* 単価 - 進捗ステータスが進行中未満の場合編集可能 */}
               <div className="border-b border-gray-200 pb-4 flex items-center">
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">単価</label>
                 <div className="ml-8 flex-1">
-                  <div className="text-lg text-gray-900">
-                    ¥{workItem.unit_price.toLocaleString()}
-                  </div>
-                  {isEditing && (
+                  {isEditing && (workItem.status || 0) < WorkStatus.IN_PROGRESS ? (
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={editedItem?.unit_price || ''}
+                      onChange={(e) => handleInputChange('unit_price', Number(e.target.value))}
+                    />
+                  ) : (
+                    <div className="text-lg text-gray-900">
+                      ¥{workItem.unit_price.toLocaleString()}
+                    </div>
+                  )}
+                  {isEditing && (workItem.status || 0) >= WorkStatus.IN_PROGRESS && (
                     <div className="text-xs text-gray-500 mt-1">
-                      ※ 単価は料金マスタで管理されます
+                      ※ 進行中以降は単価を変更できません
                     </div>
                   )}
                 </div>
