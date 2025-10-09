@@ -50,6 +50,10 @@ const WorkListPage: React.FC = () => {
   ]);
   const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
 
+  // ページング状態
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   // モーダル状態
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
@@ -253,9 +257,32 @@ const WorkListPage: React.FC = () => {
     applyFilters();
   }, [workItems]);
 
+  // ページング用の計算
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = filteredItems.slice(startIndex, endIndex);
+
+  // 表示件数変更時の処理
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // ページ変更時の処理
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // フィルター適用時にページをリセット
+  const handleSearchWithReset = () => {
+    setCurrentPage(1);
+    applyFilters();
+  };
+
   // 検索ボタンクリック時の処理
   const handleSearch = () => {
-    applyFilters();
+    handleSearchWithReset();
   };
 
   // フリーワード入力時の処理
@@ -555,16 +582,8 @@ const WorkListPage: React.FC = () => {
                 ))}
               </select>
             </div>
-            
-            <button
-              onClick={handleExportCSV}
-              className="ml-auto flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-            >
-              <Download size={16} />
-              <span>CSV出力</span>
-            </button>
           </div>
-          
+
           {/* 2行目: 進捗検索条件 */}
           <div className="flex items-center space-x-4 mb-4">
             <span className="text-sm font-medium">進捗</span>
@@ -581,6 +600,31 @@ const WorkListPage: React.FC = () => {
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* 3行目: 表示件数選択 */}
+          <div className="flex items-center space-x-4 mb-4 justify-end">
+            <span className="text-sm font-medium">表示件数</span>
+            <select
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+            >
+              <option value={20}>20件</option>
+              <option value={50}>50件</option>
+              <option value={100}>100件</option>
+            </select>
+            <span className="text-sm text-gray-600">
+              全{filteredItems.length}件中 {startIndex + 1}～{Math.min(endIndex, filteredItems.length)}件を表示
+            </span>
+
+            <button
+              onClick={handleExportCSV}
+              className="ml-auto flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+            >
+              <Download size={16} />
+              <span>CSV出力</span>
+            </button>
           </div>
           
           {/* Table */}
@@ -632,7 +676,7 @@ const WorkListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((item) => (
+                {currentItems.map((item) => (
                   <tr 
                     key={item.id} 
                     className="hover:bg-gray-50"
@@ -725,6 +769,64 @@ const WorkListPage: React.FC = () => {
             </table>
             )}
           </div>
+
+          {/* ページングコントロール */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-2 mt-4">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                前へ
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // 最初の3ページ、最後の3ページ、現在のページの前後2ページを表示
+                const showPage =
+                  page <= 3 ||
+                  page > totalPages - 3 ||
+                  (page >= currentPage - 2 && page <= currentPage + 2);
+
+                if (!showPage) {
+                  // 省略記号を表示
+                  const isFirstEllipsis = page === 4 && currentPage > 6;
+                  const isSecondEllipsis = page === totalPages - 3 && currentPage < totalPages - 5;
+
+                  if (isFirstEllipsis || isSecondEllipsis) {
+                    return (
+                      <span key={page} className="px-2 text-gray-500">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-1 border rounded text-sm ${
+                      currentPage === page
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                次へ
+              </button>
+            </div>
+          )}
         </div>
 
       {/* 作業追加モーダル */}
