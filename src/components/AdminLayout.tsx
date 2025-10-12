@@ -5,9 +5,10 @@ import { supabase } from '../utils/supabase';
 interface AdminLayoutProps {
   title: string;
   children: React.ReactNode;
+  onReady?: () => void;
 }
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
+const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children, onReady }) => {
   const navigate = useNavigate();
   const logoPath = new URL("../assets/logo.png", import.meta.url).href;
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => {
       }
 
       setLoading(false);
+      onReady?.(); // 認証完了を通知
     } catch (error) {
       console.error('認証チェックエラー:', error);
       navigate('/admin/login');
