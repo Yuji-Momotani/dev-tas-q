@@ -4,7 +4,7 @@ import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
 import AdminLayout from '../../components/AdminLayout';
 import { Work } from '../../types/work';
-import { Download, Printer, Trash2, Check, Plus, Search } from 'lucide-react';
+import { Download, Printer, Trash2, Check, Plus, Search, QrCode } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 import { QRCodeCanvas } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
@@ -511,6 +511,10 @@ const WorkListPage: React.FC = () => {
     }, 100);
   };
 
+  const handleQRScan = () => {
+    navigate('/admin/qr-scanner');
+  };
+
   return (
     <AdminLayout title="作業状況一覧">
       {/* エラー表示 */}
@@ -836,6 +840,15 @@ const WorkListPage: React.FC = () => {
         onSave={handleSaveWork}
       />
       
+      {/* QRコード読み取りボタン（右下フロート） */}
+      <button
+        onClick={handleQRScan}
+        className="fixed bottom-6 right-6 w-16 h-16 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-50"
+        title="QRコード読み取り"
+      >
+        <QrCode size={24} />
+      </button>
+
       <footer className="p-4 text-right text-xs text-gray-500">
         ©️〇〇〇〇会社
       </footer>

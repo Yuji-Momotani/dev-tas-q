@@ -1,68 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import { handleSupabaseError } from '../../utils/auth';
-import WorkerLayout from '../../components/WorkerLayout';
+import AdminLayout from '../../components/AdminLayout';
 import QRScannerComponent from '../../components/QRScannerComponent';
+import { WorkStatus, getWorkStatusLabel } from '../../constants/workStatus';
 
-const QRScannerPage: React.FC = () => {
+const AdminQRScannerPage: React.FC = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string>('');
   const [detectedQR, setDetectedQR] = useState<string | null>(null);
   const [showLinkButton, setShowLinkButton] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [currentWorkerId, setCurrentWorkerId] = useState<number | null>(null);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
-  const [isWorkerInfoLoaded, setIsWorkerInfoLoaded] = useState(false);
-
-  useEffect(() => {
-    console.log('QRScannerPage useEffect triggered, isLayoutReady:', isLayoutReady);
-    if (!isLayoutReady) return; // 認証完了まで待機
-    
-    // Strict Modeでの二重実行を防ぐため、少し遅延を追加
-    const timeoutId = setTimeout(async () => {
-      console.log('Fetching worker info...');
-      // 作業者情報を取得
-      await fetchWorkerInfo();
-      console.log('Worker info fetched');
-      setIsWorkerInfoLoaded(true);
-    }, 100);
-    
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [isLayoutReady]);
-
-  // 作業者情報を取得
-  const fetchWorkerInfo = async () => {
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        return;
-      }
-
-      const { data: workerData, error: workerError } = await supabase
-        .from('workers')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .is('deleted_at', null)
-        .single();
-
-      if (workerError || !workerData) {
-        setError('作業者情報が見つかりません');
-        return;
-      }
-
-      setCurrentWorkerId(workerData.id);
-    } catch (err) {
-      console.error('作業者情報取得エラー:', err);
-      setError('作業者情報の取得に失敗しました');
-    }
-  };
 
   const handleBack = () => {
-    navigate('/worker/work');
+    navigate('/admin/work-list');
   };
 
   // QRコード読み取り成功時の処理
@@ -74,7 +27,7 @@ const QRScannerPage: React.FC = () => {
 
   // リンクボタンクリック時の処理
   const handleLinkClick = async () => {
-    if (!detectedQR || !currentWorkerId) return;
+    if (!detectedQR) return;
 
     try {
       setLoading(true);
@@ -85,14 +38,14 @@ const QRScannerPage: React.FC = () => {
       // 作業が存在するか確認
       const { data: workData, error: checkError } = await supabase
         .from('works')
-        .select('id, status, worker_id')
+        .select('id, status')
         .eq('id', workId)
         .is('deleted_at', null)
         .single();
 
       if (checkError || !workData) {
         try {
-          handleSupabaseError(checkError, navigate, 'worker', 'work verification');
+          handleSupabaseError(checkError, navigate, 'admin');
         } catch {
           setError('作業情報が見つかりません');
           return;
@@ -100,23 +53,24 @@ const QRScannerPage: React.FC = () => {
         return;
       }
 
-      // ステータスチェック
-      if (workData.status === 4) {
-        setError('この作業は既に完了しています');
+      // ステータスチェック - 配送中(4), 集荷依頼中(5), 持込待ち(6)のみ受付
+      const allowedStatuses = [
+        WorkStatus.IN_DELIVERY,
+        WorkStatus.PICKUP_REQUESTING,
+        WorkStatus.WAITING_DROPOFF
+      ];
+
+      if (!allowedStatuses.includes(workData.status as WorkStatus)) {
+        const currentStatusLabel = getWorkStatusLabel(workData.status as WorkStatus);
+        setError(`この作業は完了処理できません。現在のステータス: ${currentStatusLabel}\n（配送中、集荷依頼中、持込待ちのみ処理可能）`);
         return;
       }
 
-      if (workData.status === 3 && workData.worker_id !== currentWorkerId) {
-        setError('この作業は他の作業者が着手中です');
-        return;
-      }
-
-      // 作業を着手中（status=3）に更新し、作業者をアサイン
+      // 作業を完了（status=7）に更新
       const { error: updateError } = await supabase
         .from('works')
         .update({ 
-          status: 3,
-          worker_id: currentWorkerId,
+          status: WorkStatus.COMPLETED,
           updated_at: new Date().toISOString()
         })
         .eq('id', workId);
@@ -124,51 +78,35 @@ const QRScannerPage: React.FC = () => {
       if (updateError) {
         console.error('作業ステータス更新エラー:', updateError);
         try {
-          handleSupabaseError(updateError, navigate, 'worker', 'work status update');
+          handleSupabaseError(updateError, navigate, 'admin');
         } catch {
-          setError('作業の開始に失敗しました');
+          setError('作業の完了処理に失敗しました');
           return;
         }
       }
 
       // 成功メッセージ表示
-      alert('作業を開始しました');
+      alert('作業を完了しました');
       
-      // 作業画面に遷移
-      navigate('/worker/work');
+      // 作業状況一覧画面に戻る
+      navigate('/admin/work-list');
       
     } catch (err) {
-      console.error('作業開始エラー:', err);
+      console.error('作業完了エラー:', err);
       setError('処理中にエラーが発生しました');
     } finally {
       setLoading(false);
     }
   };
 
-  console.log('QRScannerPage render, isLayoutReady:', isLayoutReady);
-
   return (
-    <WorkerLayout 
-      title="QR読取" 
-      onReady={() => {
-        console.log('WorkerLayout onReady callback called');
-        setIsLayoutReady(true);
-      }}
-    >
+    <AdminLayout title="QR読取" onReady={() => setIsLayoutReady(true)}>
       {!showLinkButton ? (
-        isWorkerInfoLoaded ? (
-          <QRScannerComponent
-            onQRDetected={handleQRDetected}
-            onBack={handleBack}
-            isReady={true}
-          />
-        ) : (
-          <div className="relative bg-black overflow-hidden -m-4 flex items-center justify-center" style={{ height: 'calc(100vh - 60px)' }}>
-            <div className="text-white text-center">
-              <div className="text-lg mb-2">作業者情報を取得中...</div>
-            </div>
-          </div>
-        )
+        <QRScannerComponent
+          onQRDetected={handleQRDetected}
+          onBack={handleBack}
+          isReady={isLayoutReady}
+        />
       ) : (
         <div className="relative bg-black overflow-hidden -m-4" style={{ height: 'calc(100vh - 60px)' }}>
           <div className="relative h-full flex items-center justify-center">
@@ -179,8 +117,8 @@ const QRScannerPage: React.FC = () => {
                 disabled={loading}
                 className="bg-yellow-400 text-black px-6 py-3 rounded-full font-medium shadow-lg hover:bg-yellow-300 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed mx-auto"
               >
-                <span>🔗</span>
-                <span>{loading ? '処理中...' : '作業を開始'}</span>
+                <span>✅</span>
+                <span>{loading ? '処理中...' : '作業を完了'}</span>
               </button>
               
               {/* Control Buttons */}
@@ -204,7 +142,7 @@ const QRScannerPage: React.FC = () => {
               </div>
               
               {error && (
-                <div className="mt-8 bg-red-600 text-white px-4 py-2 rounded-lg max-w-xs mx-auto text-center">
+                <div className="mt-8 bg-red-600 text-white px-4 py-2 rounded-lg max-w-md mx-auto text-center whitespace-pre-line">
                   {error}
                 </div>
               )}
@@ -218,8 +156,8 @@ const QRScannerPage: React.FC = () => {
           </footer>
         </div>
       )}
-    </WorkerLayout>
+    </AdminLayout>
   );
 };
 
-export default QRScannerPage;
+export default AdminQRScannerPage;

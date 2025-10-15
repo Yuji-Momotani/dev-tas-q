@@ -18,6 +18,7 @@ import QRScannerPage from './pages/worker/QRScannerPage';
 import WorkerMyPage from './pages/worker/WorkerMyPage';
 import DeliveryMethodPage from './pages/worker/DeliveryMethodPage';
 import WorkerAuthCallbackPage from './pages/worker/WorkerAuthCallbackPage';
+import AdminQRScannerPage from './pages/admin/AdminQRScannerPage';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
         <Route path="/admin/email-change/:id" element={<EmailChangePage />} />
         <Route path="/admin/auth/callback" element={<AdminAuthCallbackPage />} />
         <Route path="/admin/password-reset" element={<AdminPasswordResetPage />} />
+        <Route path="/admin/qr-scanner" element={<AdminQRScannerPage />} />
         <Route path="/worker/login" element={<WorkerLoginPage />} />
         <Route path="/worker/password-reset" element={<WorkerPasswordResetPage />} />
         <Route path="/worker/work" element={<WorkerWorkPage />} />
