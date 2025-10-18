@@ -7,7 +7,7 @@ import { Edit, Save, X, Video } from 'lucide-react';
 import VideoPlayerModal from '../../components/VideoPlayerModal';
 import AdminLayout from '../../components/AdminLayout';
 import { isValidYouTubeUrl, getYouTubeThumbnail, generateVideoThumbnail } from '../../utils/video';
-import { WorkVideo } from '../../types/work';
+import { WorkVideo, calculateCost } from '../../types/work';
 import { handleSupabaseError } from '../../utils/auth';
 
 type WorkWithWorker = Database['public']['Tables']['works']['Row'] & {
@@ -39,8 +39,8 @@ const WorkDetailPage: React.FC = () => {
   const [editedItem, setEditedItem] = useState<{
     work_title: string;
     worker_id: number | null;
-    quantity: number | null;
-    unit_price: number | null;
+    quantity: number;
+    unit_price: number;
     delivery_deadline: string | null;
     note: string | null;
   } | null>(null);
@@ -279,10 +279,18 @@ const WorkDetailPage: React.FC = () => {
     try {
       setLoading(true);
 
+      // 費用を計算
+      const cost = calculateCost(
+        editedItem.quantity,
+        editedItem.unit_price,
+        workItem.workers?.unit_price_ratio || 1.0
+      );
+      
       const updateData = {
         worker_id: editedItem.worker_id,
         quantity: editedItem.quantity,
         unit_price: editedItem.unit_price,
+        cost: cost,
         delivery_deadline: editedItem.delivery_deadline,
         note: editedItem.note,
         updated_at: new Date().toISOString()
@@ -332,14 +340,6 @@ const WorkDetailPage: React.FC = () => {
     }).replace(/\//g, '.');
   };
 
-  // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
-  const calculateTotalCost = (): number => {
-    if (!editedItem?.quantity) return 0;
-    // 編集中の単価を優先、なければ現在の単価を使用
-    const unitPrice = editedItem?.unit_price || workItem?.unit_price || 0;
-    const unitPriceRatio = workItem?.workers?.unit_price_ratio || 1.0;
-    return Math.floor(editedItem.quantity * unitPrice * unitPriceRatio);
-  };
 
   // 動画選択変更処理
   const handleVideoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -500,13 +500,13 @@ const WorkDetailPage: React.FC = () => {
                   {isEditing ? (
                     <input
                       type="number"
-                      value={editedItem.quantity || ''}
-                      onChange={(e) => handleInputChange('quantity', e.target.value ? parseInt(e.target.value) : null)}
+                      value={editedItem.quantity}
+                      onChange={(e) => handleInputChange('quantity', e.target.value !== '' ? parseInt(e.target.value) : 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                       min="0"
                     />
                   ) : (
-                    <div className="text-lg text-gray-900">{workItem.quantity || '-'}</div>
+                    <div className="text-lg text-gray-900">{workItem.quantity}</div>
                   )}
                 </div>
               </div>
@@ -552,7 +552,11 @@ const WorkDetailPage: React.FC = () => {
                 <label className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">費用</label>
                 <div className="ml-8 flex-1">
                   <div className="text-lg text-gray-900">
-                    ¥{calculateTotalCost().toLocaleString()}
+                    ¥{calculateCost(
+                      editedItem?.quantity || 0,
+                      editedItem?.unit_price || workItem?.unit_price || 0,
+                      workItem?.workers?.unit_price_ratio || 1.0
+                    ).toLocaleString()}
                   </div>
                   {isEditing && (
 										<>
