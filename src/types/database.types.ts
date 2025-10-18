@@ -412,13 +412,15 @@ export type Database = {
       }
       works: {
         Row: {
+          cost: number
           created_at: string | null
           deleted_at: string | null
           delivery_deadline: string | null
+          ended_at: string | null
           id: number
           m_work_id: number
           note: string | null
-          quantity: number | null
+          quantity: number
           scheduled_delivery_date: string | null
           status: number | null
           unit_price: number
@@ -427,13 +429,15 @@ export type Database = {
           worker_id: number | null
         }
         Insert: {
+          cost?: number
           created_at?: string | null
           deleted_at?: string | null
           delivery_deadline?: string | null
+          ended_at?: string | null
           id?: number
           m_work_id: number
           note?: string | null
-          quantity?: number | null
+          quantity: number
           scheduled_delivery_date?: string | null
           status?: number | null
           unit_price?: number
@@ -442,13 +446,15 @@ export type Database = {
           worker_id?: number | null
         }
         Update: {
+          cost?: number
           created_at?: string | null
           deleted_at?: string | null
           delivery_deadline?: string | null
+          ended_at?: string | null
           id?: number
           m_work_id?: number
           note?: string | null
-          quantity?: number | null
+          quantity?: number
           scheduled_delivery_date?: string | null
           status?: number | null
           unit_price?: number

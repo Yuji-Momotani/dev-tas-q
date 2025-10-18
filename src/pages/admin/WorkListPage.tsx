@@ -108,12 +108,14 @@ const WorkListPage: React.FC = () => {
         status: work.status || WorkStatus.REQUEST_PLANNED,
         workerName: work.workers?.name || undefined,
         workerID: work.workers?.id || undefined,
-        quantity: work.quantity || undefined,
+        quantity: work.quantity,
         unitPrice: work.unit_price,
+        cost: work.cost,
         deliveryDate: work.delivery_deadline ? new Date(work.delivery_deadline) : undefined,
         scheduledDeliveryDate: work.scheduled_delivery_date ? new Date(work.scheduled_delivery_date) : undefined,
         workerUnitPriceRatio: work.workers?.unit_price_ratio || 1.0,
         note: work.note || undefined,
+        endedAt: work.ended_at ? new Date(work.ended_at) : undefined,
       }));
 
       // ソート処理を適用
@@ -486,9 +488,9 @@ const WorkListPage: React.FC = () => {
                     <p><strong>作業ID:</strong> #${item.id}</p>
                     <p><strong>作業名:</strong> ${item.title}</p>
                     <p><strong>作業者名:</strong> ${item.workerName || '未指定'}</p>
-                    <p><strong>数量:</strong> ${item.quantity || '未指定'}</p>
+                    <p><strong>数量:</strong> ${item.quantity}</p>
                     <p><strong>単価:</strong> ¥${item.unitPrice?.toLocaleString() || '0'}</p>
-                    <p><strong>費用:</strong> ¥${((item.quantity || 0) * item.unitPrice).toLocaleString()}</p>
+                    <p><strong>費用:</strong> ¥${item.cost.toLocaleString()}</p>
                     <p><strong>納入締切日:</strong> ${item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString('ja-JP') : '未指定'}</p>
                     <p><strong>特記事項:</strong> ${item.note || 'なし'}</p>
                   </div>
@@ -718,13 +720,13 @@ const WorkListPage: React.FC = () => {
                       {item.workerName || '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {item.quantity || '-'}
+                      {item.quantity}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {item.unitPrice ? `¥${item.unitPrice}` : '-'}
+                      {`¥${item.unitPrice}`}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {(item.quantity && item.unitPrice) ? `¥${Math.floor(item.quantity * item.unitPrice * (item.workerUnitPriceRatio || 1.0)).toLocaleString()}` : '-'}
+                      {`¥${item.cost.toLocaleString()}`}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
                       {item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'}
