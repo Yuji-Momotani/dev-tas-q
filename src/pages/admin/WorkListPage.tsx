@@ -352,10 +352,15 @@ const WorkListPage: React.FC = () => {
     try {
       setLoading(true);
       
+      // JST時間を取得
+      const now = new Date();
+      const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9時間
+      
       const { error } = await supabase
         .from('works')
         .update({ 
           status: WorkStatus.COMPLETED,
+          ended_at: jstTime.toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', item.id)
