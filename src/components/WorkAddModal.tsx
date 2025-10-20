@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Save } from 'lucide-react';
 import { supabase } from '../utils/supabase';
-import type { Database } from '../types/database.types';
 import { WorkStatus, getWorkStatusLabel } from '../constants/workStatus';
 import { handleSupabaseError } from '../utils/auth';
+import { calculateCost } from '../types/work';
 
 type Worker = {
   id: number;
@@ -32,7 +32,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
     assigneeId: null as number | null,
     quantity: 0,
     unitPrice: 0,
-    totalCost: 0,
+    cost: 0,
     deliveryDate: '',
     note: ''
   });
@@ -120,7 +120,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       const unitPriceRatio = selectedWorker?.unit_price_ratio || 1.0;
       
       // 費用計算: 数量 × 単価 × 単価率（小数点切り捨て）
-      updatedData.totalCost = Math.floor(quantity * unitPrice * unitPriceRatio);
+      updatedData.cost = calculateCost(quantity, unitPrice, unitPriceRatio);
     }
 
     setFormData(updatedData);
@@ -163,8 +163,9 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
         m_work_id: formData.workMasterId!,
         status: formData.status,
         worker_id: formData.assigneeId,
-        quantity: formData.quantity || null,
+        quantity: formData.quantity,
         unit_price: formData.unitPrice,
+        cost: formData.cost,
         delivery_deadline: formData.deliveryDate || null,
         note: formData.note || null,
       };
@@ -196,7 +197,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
       assigneeId: null,
       quantity: 0,
       unitPrice: 0,
-      totalCost: 0,
+      cost: 0,
       deliveryDate: '',
       note: ''
     });
@@ -326,7 +327,7 @@ const WorkAddModal: React.FC<WorkAddModalProps> = ({ isOpen, onClose, onSave }) 
               </label>
               <input
                 type="text"
-                value={`¥${formData.totalCost.toLocaleString()}`}
+                value={`¥${formData.cost.toLocaleString()}`}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
               />

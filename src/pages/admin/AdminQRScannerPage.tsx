@@ -67,10 +67,15 @@ const AdminQRScannerPage: React.FC = () => {
       }
 
       // 作業を完了（status=7）に更新
+      // JST時間を取得
+      const now = new Date();
+      const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9時間
+      
       const { error: updateError } = await supabase
         .from('works')
         .update({ 
           status: WorkStatus.COMPLETED,
+          ended_at: jstTime.toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', workId);
