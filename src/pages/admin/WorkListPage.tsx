@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkStatusBadge from '../../components/WorkStatusBadge';
 import WorkAddModal from '../../components/WorkAddModal';
+import DeliveryCalendarModal from '../../components/DeliveryCalendarModal';
 import AdminLayout from '../../components/AdminLayout';
 import { Work } from '../../types/work';
-import { Download, Printer, Trash2, Check, Plus, Search, QrCode } from 'lucide-react';
+import { Download, Printer, Trash2, Check, Plus, Search, QrCode, Calendar } from 'lucide-react';
 import { exportWorkListCSV } from '../../utils/csvExport';
 import { QRCodeCanvas } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
@@ -56,6 +57,7 @@ const WorkListPage: React.FC = () => {
 
   // モーダル状態
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   
   // Realtime channel ref
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -630,8 +632,16 @@ const WorkListPage: React.FC = () => {
             </span>
 
             <button
+              onClick={() => setIsCalendarModalOpen(true)}
+              className="ml-auto flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+            >
+              <Calendar size={16} />
+              <span>納入カレンダー</span>
+            </button>
+
+            <button
               onClick={handleExportCSV}
-              className="ml-auto flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
               <Download size={16} />
               <span>CSV出力</span>
@@ -846,7 +856,13 @@ const WorkListPage: React.FC = () => {
         onClose={handleCloseAddModal}
         onSave={handleSaveWork}
       />
-      
+
+      <DeliveryCalendarModal
+        isOpen={isCalendarModalOpen}
+        onClose={() => setIsCalendarModalOpen(false)}
+        workItems={workItems}
+      />
+
       {/* QRコード読み取りボタン（右下フロート） */}
       <button
         onClick={handleQRScan}
