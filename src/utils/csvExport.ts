@@ -1,5 +1,6 @@
 import { Work } from '../types/work';
 import { WorkStatus, getWorkStatusLabel } from '../constants/workStatus';
+import { formatDateTimeJP, formatDateJP } from './dateFormat';
 
 // CSV形式の文字列を生成するヘルパー関数
 export const generateCSV = (headers: string[], rows: string[][]): string => {
@@ -53,8 +54,8 @@ export const exportWorkListCSV = (workItems: Work[]): void => {
     item.quantity.toString(),
     `¥${item.unitPrice}`,
     `¥${item.cost.toLocaleString()}`,
-    item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-',
-    item.scheduledDeliveryDate ? item.scheduledDeliveryDate.toLocaleDateString('ja-JP') : '-'
+    formatDateJP(item.deliveryDate),
+    formatDateTimeJP(item.scheduledDeliveryDate)
   ]);
 
   const csvContent = generateCSV(headers, rows);

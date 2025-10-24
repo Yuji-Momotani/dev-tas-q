@@ -14,6 +14,7 @@ import { WorkStatus, getWorkStatusLabel } from '../../constants/workStatus';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { sortWorkItems } from '../../utils/workSort';
 import { handleSupabaseError } from '../../utils/auth';
+import { formatDateTimeJP, formatDateJP } from '../../utils/dateFormat';
 
 // Supabaseのworks型を拡張してWork型に対応
 type WorkWithWorkerAndMaster = Database['public']['Tables']['works']['Row'] & {
@@ -672,7 +673,7 @@ const WorkListPage: React.FC = () => {
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
                     納入締切日
                   </th>
-                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700 min-w-40">
                     納品予定日
                   </th>
                   <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
@@ -734,10 +735,10 @@ const WorkListPage: React.FC = () => {
                       {`¥${item.cost.toLocaleString()}`}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {item.deliveryDate ? item.deliveryDate.toLocaleDateString('ja-JP') : '-'}
+                      {formatDateJP(item.deliveryDate)}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500">
-                      {item.scheduledDeliveryDate ? item.scheduledDeliveryDate.toLocaleDateString('ja-JP') : '-'}
+                      {formatDateTimeJP(item.scheduledDeliveryDate)}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-500" title={item.note || ''}>
                       {item.note ? (item.note.length > 30 ? `${item.note.substring(0, 30)}...` : item.note) : '-'}

@@ -4,6 +4,7 @@ import { Menu, LogOut, Truck, Mail, Package } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { WorkStatus } from '../../constants/workStatus';
 import { handleSupabaseError } from '../../utils/auth';
+import { TimeSelector } from '../../components/TimeSelector';
 
 const DeliveryMethodPage: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ const DeliveryMethodPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [currentWorkId, setCurrentWorkId] = useState<number | null>(null);
   const [scheduledDeliveryDate, setScheduledDeliveryDate] = useState<string>('');
+  const [scheduledDeliveryTime, setScheduledDeliveryTime] = useState<string>('09:00');
 
   const logoPath = new URL("../../assets/logo.png", import.meta.url).href;
 
@@ -112,11 +114,12 @@ const DeliveryMethodPage: React.FC = () => {
       setError('');
 
       // 作業ステータスと納品予定日を更新
+      const scheduledDateTime = `${scheduledDeliveryDate}T${scheduledDeliveryTime}:00`;
       const { error: updateError } = await supabase
         .from('works')
         .update({ 
           status: status,
-          scheduled_delivery_date: scheduledDeliveryDate,
+          scheduled_delivery_date: scheduledDateTime,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentWorkId);
@@ -216,16 +219,26 @@ const DeliveryMethodPage: React.FC = () => {
             <label htmlFor="scheduledDeliveryDate" className="block text-lg font-medium text-gray-700 mb-3">
               納品予定日 <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
-              id="scheduledDeliveryDate"
-              value={scheduledDeliveryDate}
-              onChange={(e) => setScheduledDeliveryDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              disabled={loading}
-            />
-            <p className="text-sm text-gray-500 mt-2">納品予定日を選択してください</p>
+            <div className="space-y-3">
+              <input
+                type="date"
+                id="scheduledDeliveryDate"
+                value={scheduledDeliveryDate}
+                onChange={(e) => setScheduledDeliveryDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                disabled={loading}
+              />
+              <div className="flex items-center space-x-3">
+                <label className="text-lg font-medium text-gray-700">時刻:</label>
+                <TimeSelector
+                  value={scheduledDeliveryTime}
+                  onChange={setScheduledDeliveryTime}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">納品予定日と時刻を選択してください（30分単位）</p>
           </div>
           
           <div className="space-y-4 max-w-md mx-auto">
