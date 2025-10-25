@@ -8,6 +8,7 @@ import { sortWorkItems } from '../../utils/workSort';
 import { getWorkerImageUrl } from '../../utils/image';
 import { handleSupabaseError } from '../../utils/auth';
 import WorkerLayout from '../../components/WorkerLayout';
+import WorkerMonthlyProceeds from '../../components/WorkerMonthlyProceeds';
 
 type WorkerType = Tables<'workers'> & {
   groups?: {
@@ -584,6 +585,9 @@ const WorkerMyPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Monthly Proceeds Section */}
+          {workerId && <WorkerMonthlyProceeds workerId={workerId} />}
 
           {/* Work History Section */}
           <div>
