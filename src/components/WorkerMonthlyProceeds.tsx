@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { generateMonthOptions, formatYearMonth } from '../utils/dateFormat';
+import { generateMonthOptions, formatYearMonth, getPreviousMonth } from '../utils/dateFormat';
 
 interface WorkProceed {
   id: number;
@@ -26,7 +26,14 @@ const WorkerMonthlyProceeds: React.FC<WorkerMonthlyProceedsProps> = ({ workerId 
     setMonthOptions(options);
     
     if (options.length > 0) {
-      setSelectedMonth(options[0].value);
+      const previousMonth = getPreviousMonth();
+      const hasValidPreviousMonth = options.some(option => option.value === previousMonth);
+      
+      if (hasValidPreviousMonth) {
+        setSelectedMonth(previousMonth);
+      } else {
+        setSelectedMonth(options[0].value);
+      }
     }
   }, []);
 

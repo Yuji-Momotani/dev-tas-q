@@ -30,11 +30,11 @@ export const generateMonthOptions = (startYearMonth?: string): Array<{ value: st
   
   const startDate = startYearMonth 
     ? new Date(startYearMonth.replace('/', '-') + '-01')
-    : new Date('2025-10-01');
+    : new Date('2025-8-01');
   
   const currentDate = new Date();
   
-  let currentMonth = new Date(startDate);
+  const currentMonth = new Date(startDate);
   
   while (currentMonth <= currentDate) {
     const year = currentMonth.getFullYear();
@@ -59,6 +59,16 @@ export const formatYearMonth = (date: Date | string | null | undefined): string 
   
   const year = d.getFullYear();
   const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  
+  return `${year}/${month}`;
+};
+
+export const getPreviousMonth = (): string => {
+  const now = new Date();
+  const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  
+  const year = previousMonth.getFullYear();
+  const month = (previousMonth.getMonth() + 1).toString().padStart(2, '0');
   
   return `${year}/${month}`;
 };
