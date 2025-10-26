@@ -10,6 +10,7 @@ import type { Database } from '../../types/database.types';
 import { WorkStatus } from '../../constants/workStatus';
 import { sortWorkItems } from '../../utils/workSort';
 import { getWorkerImageUrl } from '../../utils/image';
+import WorkerMonthlyProceeds from '../../components/WorkerMonthlyProceeds';
 
 // Supabaseの型を拡張
 type WorkerWithRelations = Database['public']['Tables']['workers']['Row'] & {
@@ -640,6 +641,9 @@ const WorkerDetailPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* 月別報酬 */}
+          <WorkerMonthlyProceeds workerId={workerDetail.id} />
 
           {/* 作業一覧テーブル */}
           <div className="mt-8">

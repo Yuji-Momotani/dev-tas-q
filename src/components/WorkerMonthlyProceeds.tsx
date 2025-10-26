@@ -41,6 +41,7 @@ const WorkerMonthlyProceeds: React.FC<WorkerMonthlyProceedsProps> = ({ workerId 
     if (selectedMonth && workerId) {
       fetchMonthlyProceeds();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, workerId]);
 
   const fetchMonthlyProceeds = async () => {
